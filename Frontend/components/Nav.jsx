@@ -6,7 +6,9 @@ import {motion} from 'framer-motion';
 const links = [
   {path: '/', name: 'home'},
   {path: '/login', name: 'login'},
+  {path: '/custom', name: 'custom'},
   {path: '/mypage', name: 'mypage'},
+  //{path: '/likework', name: 'likework'},
 
 ];
 
