@@ -11,8 +11,10 @@ deactivate
 #im_project 디렉터리(api_read.py, api_write.py가 있는 디렉터리)로 이동!
 # app실행 명령어
 read : uvicorn api_read:app --reload --port 8000 --reload
+
 write : uvicorn api_write:app --reload --port 8001 --reload
 
 # app접속방법(URL주의!!!!)
 read : http://127.0.0.1:8000/docs
+
 write : http://127.0.0.1:8001/docs
