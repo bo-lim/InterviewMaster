@@ -6,19 +6,29 @@ yaml파일을 내려받고 실행시키기 전에 사전 확인!
 master 1개, workernode 3개를 전제로 구성했습니다!
 
 kubectl get no -A
+
 NAME      STATUS   ROLES           AGE     VERSION
+
 master    Ready    control-plane   7d14h   v1.29.0
+
 worker1   Ready    <none>          7d13h   v1.29.0
+
 worker2   Ready    <none>          7d13h   v1.29.0
+
 worker3   Ready    <none>          7d13h   v1.29.0
 
 kubectl get sc
+
 NAME               PROVISIONER        RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+
 openebs-device     openebs.io/local   Delete          WaitForFirstConsumer   false                  4d7h
+
 openebs-hostpath   openebs.io/local   Delete          WaitForFirstConsumer   false                  4d7h
 
 명령어로 storageclass 확인했을시 없을 경우에는 아래의 명령어로 설치!
+
 kubectl apply -f https://openebs.github.io/charts/openebs-operator-lite.yaml
+
 kubectl apply -f https://openebs.github.io/charts/openebs-lite-sc.yaml
 
 # 네임스페이스 생성
@@ -41,7 +51,9 @@ sudo vi /etc/resolv.conf
 
 # ping 확인
 curl mongodb-0.mongodb-svc.mongodb.svc.cluster.local:27017
+
 curl mongodb-1.mongodb-svc.mongodb.svc.cluster.local:27017
+
 curl mongodb-2.mongodb-svc.mongodb.svc.cluster.local:27017
 
 # mongodb 세팅 필요
@@ -70,10 +82,12 @@ rs0:PRIMARY>
 # 노션 → 작업공간/워크북 → DB - MongoDB
 # 사용할 DB지정
 use im
+
 # collection생성
 db.createCollection("InterviewMaster")
+
 # 더미 데이터 생성
-db.InterviewMaster.insert(
+db.InterviewMaster2.insert(
   {
     "_id":"pji0217@naver.com"
   , "user_info":
