@@ -1,4 +1,6 @@
 # Backend Guide
+# 워크북 경로
+# 노션 → 작업공간/워크북 → Backend(FastAPI)
 해당 파일을 내려받고 im, im_project가 있는 디렉터리로 이동!
 # 가상환경 진입(여기서 작업을 했음)
 source im/Scripts/activate
