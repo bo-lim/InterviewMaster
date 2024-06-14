@@ -1,14 +1,12 @@
 # Backend Guide
-해당 파일을 내려받고 im, im_project가 있는 디렉터리에서
-
+해당 파일을 내려받고 im, im_project가 있는 디렉터리로 이동!
 # 가상환경 진입(여기서 작업을 했음)
 source im/Scripts/activate
 
 # (참고)가상환경 나오기
 deactivate
 
-im_project 디렉터리 내(api_read.py, api_write.py가 있는 디렉터리)에서 
-
+#im_project 디렉터리(api_read.py, api_write.py가 있는 디렉터리)로 이동!
 # app실행 명령어
 read : uvicorn api_read:app --reload --port 8000 --reload
 write : uvicorn api_write:app --reload --port 8001 --reload
