@@ -1,5 +1,7 @@
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
+from pydantic import BaseModel
 from datetime import datetime
 import re
 
@@ -17,6 +19,15 @@ import re
 # post : 업데이트, 생성 / 파라미터가 url에 유출이 안됨(body에 담아서 보내니까)
 
 app = FastAPI()
+
+# COSRS옵션 부여
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # 어느곳에서 접근을 허용할 것이냐
+    allow_credentials=True,
+    allow_methods=["*"], # 어떤 메서드에 대해서 허용할 것이냐("GET", "POST")
+    allow_headers=["*"], 
+)
 
 # MongoDB 연결 설정(쓰기속도 특화)
 connection_string = "mongodb://192.168.56.100:32017/?replicaSet=rs0&directConnection=true"
@@ -142,8 +153,19 @@ if __name__ == "__main__":
 # http://url...
 # 자소서
 # 프로게이머
+class Item(BaseModel):
+    user_id: str
+    itv_text_url: str
+    itv_cate: str
+    itv_job: str
+
 @app.post("/new_itv")
-async def new_itv(user_id: str, itv_text_url: str, itv_cate: str, itv_job: str):
+async def new_itv(item: Item):
+    user_id = item.user_id
+    itv_text_url = item.itv_text_url
+    itv_cate = item.itv_cate
+    itv_job = item.itv_job
+    
     try:
         # user_id에 해당하는 값 가져오기
         user = collection.find_one({"_id": user_id})
@@ -284,7 +306,7 @@ if __name__ == "__main__":
 # T1@T1_240614_001
 # n개
 @app.post("/update_itv_qs_cnt")
-async def update_fb(user_id: str, itv_no: str, itv_qs_cnt: int):
+async def update_itv_qs_cnt(user_id: str, itv_no: str, itv_qs_cnt: int):
     try:
         # user_id에 해당하는 값 가져오기
         user = collection.find_one({"_id": user_id})
