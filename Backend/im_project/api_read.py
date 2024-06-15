@@ -32,7 +32,7 @@ collection = db["InterviewMaster"]
 
 
 # 전체 데이터 조회(테스트용)
-@app.get("/getdata")
+@app.get("/get_data")
 async def get_data():
     # MongoDB에서 모든 문서 조회
     data = list(collection.find({}))
