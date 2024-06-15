@@ -32,7 +32,7 @@ collection = db["InterviewMaster"]
 
 
 # 전체 데이터 조회(테스트용)
-@app.get("/get_data")
+@app.get("/getdata")
 async def get_data():
     # MongoDB에서 모든 문서 조회
     data = list(collection.find({}))
@@ -47,7 +47,7 @@ async def get_data():
 # get
 # 입력값 user_id
 # 출력값 user_id, user_inf, user_history
-@app.get("/get_user/{user_id}")
+@app.get("/getuser/{user_id}")
 async def get_user(user_id: str):
 
     user = collection.find_one({"_id": user_id}, {"_id": 0, "user_info": 1, "user_history": 1})
@@ -67,7 +67,7 @@ async def get_user(user_id: str):
 # get
 # 입력값 user_id
 # 출력값 user_id, user_history, itv_info
-@app.get("/get_itv/{user_id}")
+@app.get("/getitv/{user_id}")
 async def get_itv(user_id: str):
 
     user = collection.find_one({"_id": user_id}, {"_id": 0, "user_history": 1})
