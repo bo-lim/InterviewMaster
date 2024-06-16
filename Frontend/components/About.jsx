@@ -23,7 +23,7 @@ const About = () => {
           </div>
           {/* tab */}
           <div className="flex-1">
-            <Tabs>
+            <Tabs defaultValue="point1">
               <TabsList>
                 <TabsTrigger value='point1'>point1</TabsTrigger>
                 <TabsTrigger value='point2'>point2</TabsTrigger>

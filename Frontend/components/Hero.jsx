@@ -13,6 +13,8 @@ import DevImg from './Devlmg';
 import Badge from './Badge';
 import Socials from './Socials';
 
+
+
 const Hero = () => {
   return (
     <section className='py-12 xl:py-24 h-[84vh] xl:pt-28 bg-hero bg-no-repeat bg-bottom bg-cover dark:bg-none'>
@@ -40,7 +42,7 @@ const Hero = () => {
           <div className='hidden xl:flex relative'>
             <div className='bg-hero_shape2_dark dark:bg-hero_shape2_light w-[500px] h-[500px] bg-no-repeat absolute -top-1 -right-2 bg-opacity-50'></div>
             <DevImg 
-              containerStyles=' w-[510px] h-[462px] bg-no-repeat relative bg-bottom'
+              containerStyles=' w-[500px] h-[450px] bg-no-repeat relative bg-bottom'
               imgSrc='/hero/maininterview.png'/>
           </div>
         
