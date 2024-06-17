@@ -30,8 +30,9 @@ const Mypage = () => {
     const fetchData = async () => {
       try {
         const data = await getUserList("pji0217@naver.com"); // 실제 user_id를 여기에 삽입
-        setUserData(data.user_info);
+        setUserData(data.user_info); //userDsts = data.user_info
         console.log(userData);
+
       } catch (error) {
         setError("Failed to fetch user data: " + error.message);
       }

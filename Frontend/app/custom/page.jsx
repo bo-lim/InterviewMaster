@@ -44,16 +44,23 @@ const CustomDialog = () => {
       console.log(error);
     });
 
-    // axios.post('http://192.168.0.32:8888/coverletter/', 
-    //   { coverletter_url: "s3://simulation-userdata/coverletter/test.txt",
-    //     position_url: "s3://simulation-userdata/position/test.txt"
-    //   })
-    // .then(function (response) {
-    //   console.log(response);
-    // })
-    // .catch(function (error) {
-    //   console.log(error);
-    // });
+    const response2 = await axios.post('http://192.168.0.32:8888/coverletter/',
+      { coverletter_url: "s3://simulation-userdata/coverletter/test.txt",
+        position_url: "s3://simulation-userdata/position/test.txt"
+      })
+    .then(function (response) {
+      console.log(response);
+      console.log(response.data.response);
+      router.push('/infromation?data='+response.data.response);
+    })
+    .catch(function (error) {
+      console.log(error);
+    });
+    console.log(response2);
+
+    // 응답 데이터를 localStorage에 저장
+    //localStorage.setItem('interviewData', JSON.stringify(response2.response));
+  
 
     router.push('/information');
   };

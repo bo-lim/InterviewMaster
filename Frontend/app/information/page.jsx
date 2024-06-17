@@ -4,7 +4,9 @@ import DevImg from '../../components/Devlmg';
 import { Button } from "../../components/ui/button";
 import Link from 'next/link';
 
+
 const Information = () => {
+ 
   return (
     <section className="min-h-screen pt-12">
       <div className="container mx-auto">
