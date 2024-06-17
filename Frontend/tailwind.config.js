@@ -1,11 +1,13 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: ["class"],
   content: [
-    "./pages/**/*.{js,jsx}",
-    "./components/**/*.{js,jsx}",
-    "./app/**/*.{js,jsx}",
-    "./src/**/*.{js,jsx}",
+    './pages/**/*.{js,jsx}',
+    './components/**/*.{js,jsx}',
+    './app/**/*.{js,jsx}',
+    './src/**/*.{js,jsx}',
   ],
+  prefix: "",
   theme: {
     container: {
       center: true,
@@ -69,17 +71,7 @@ module.exports = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
-      backgroundImage: {
-        hero: 'url(/hero/hero-bg.png)',
-        hero_shape: 'url(/hero/shape-1.svg)',
-        hero_shape2_light: 'url(/hero/shape-2-light.svg)',
-        hero_shape2_dark: 'url(/hero/shape-2-dark.svg)',
-        about_shape_dark: 'url(/about/shape-dark.svg)',
-        dots_light: 'url(/dots-light.svg)',
-        dots_dark: 'url(/dots-dark.svg)',
-      },
     },
   },
-  darkMode: ["class"],
-  plugins: [],
-};
+  plugins: [require("tailwindcss-animate")],
+}
