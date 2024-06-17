@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useState } from "react";
+import { useRouter, useSearchParams  } from 'next/navigation';
 import { useRecordWebcam } from 'react-record-webcam';
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { AudioRecorder,useAudioRecorder } from 'react-audio-voice-recorder';
@@ -9,6 +10,7 @@ import ReactPlayer from 'react-player'
 
 const Interview = () => {
   const [start, setStart] = useState(0);
+  
   const { 
     activeRecordings, 
     createRecording,
@@ -39,7 +41,7 @@ const Interview = () => {
       secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY,
     },
   });
-  const bucket = 'simulation-userdata'
+  const bucket = process.env.NEXT_PUBLIC_BUCKET_NAME;
   const file_name = Date.now();
   const audio_key = `audio/${file_name + '.mp3'}`;
   const video_key = `video/${file_name + '.webm'}`;

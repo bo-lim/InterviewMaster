@@ -15,25 +15,47 @@ import {
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 const CustomDialog = () => {
+  const user_id = '';
   const [step, setStep] = useState(1);
   const [job, setJob] = useState("");
   const [file, setFile] = useState(null);
   // const [userId, setUserId] = useState(""); // user_id 상태 추가
   // const [textUrl, setTextUrl] = useState(""); // itv_text_url 상태 추가
   const router = useRouter();
+  const bucket = process.env.NEXT_PUBLIC_BUCKET_NAME;
+  const s3_client = new S3Client({
+    region: 'ap-northeast-2',
+    credentials: {
+      accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID,
+      secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY,
+    },
+  });
 
   const handleNext = () => {
     setStep(step + 1);
   };
-
+  const file_key = `coverletter/${user_id}_${Date.now()}_`;
   const handleSubmit = async () => {
+    console.log(file);
+    const command = new PutObjectCommand({
+      Key: file_key+file.name,
+      Body: file,
+      Bucket: bucket,
+    });
+    try {
+      const response = s3_client.send(command);
+      console.log(response);
+    } catch (err) {
+      console.error(err);
+    }
     // FormData 생성 및 데이터 추가
  
     axios.post('http://192.168.0.66:8001/new_itv', 
       {user_id: "ygang4546@gmail.com",
-        itv_text_url: "강예진",
+        itv_text_url: file_key+file.name,
         itv_job: job,
         itv_cate: "자소서"
       })

@@ -1,8 +1,10 @@
+'use client';
 import React from "react";
 import "../globals.css";
 import DevImg from '../../components/Devlmg';
 import { Button } from "../../components/ui/button";
 import Link from 'next/link';
+import { useSearchParams  } from 'next/navigation';
 
 const Information = () => {
   return (
