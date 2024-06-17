@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import DevImg from "../../components/Devlmg";
-import { Button } from "../../components/Devlmg";
+import { Button } from "../../components/ui/button";
 
 import { getUserList } from "../api"; //api 호출 
 import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card"
+import { BUILD_ID_FILE } from "next/dist/shared/lib/constants";
 
 
 const Mypage = () => {
@@ -68,7 +69,13 @@ const Mypage = () => {
                   <Card className="w-[350px]">
                     <CardHeader>
                       <CardTitle>MY INFORMATION</CardTitle>
-                      <CardDescription>Welcome to <span>{userData.user_nm}</span> !</CardDescription>
+                      <CardDescription>Welcome to 
+                      {userData && (
+                        <>
+                        <span>{userData.user_nm}</span> !
+                        </>
+                      )}
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
                       <form>
@@ -106,8 +113,8 @@ const Mypage = () => {
                       </form>
                     </CardContent>
                     <CardFooter className="flex justify-between">
-                      {/* <Button variant="outline">Cancel</Button>
-                      <Button>Deploy</Button> */}
+                    
+                     <Button className='gap-x-2'>Update</Button>
                     </CardFooter>
                   </Card>
                   

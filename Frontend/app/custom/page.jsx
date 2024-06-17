@@ -30,23 +30,12 @@ const CustomDialog = () => {
 
   const handleSubmit = async () => {
     // FormData 생성 및 데이터 추가
-    const formData = new FormData();
-    formData.append("userid", "ygang4546@gmail.com"); // 고정된 user_id
-    formData.append("itvtexturl", "예진"); // 고정된 itv_text_url
-    formData.append("itvjob", job); // 사용자가 입력한 관심 직무
-    if (file) {
-      formData.append("itvcate", "자소서"); // 사용자가 첨부한 파일
-    }
-    //await postItv(formData); // API 호출-> submit버튼 클릭시 post 
-    // const requestOptions = {
-    //   method: "POST",
-    //   body: JSON.stringify(),
-    // };
-    axios.post('http://192.168.0.66:8001/newitv', 
-      {userid: "ygang4546@gmail.com",
-        itvtexturl: "예진",
-        itvjob: "제발",
-        itvcate: "자소서"
+ 
+    axios.post('http://192.168.0.66:8001/new_itv', 
+      {user_id: "ygang4546@gmail.com",
+        itv_text_url: "강예진",
+        itv_job: job,
+        itv_cate: "자소서"
       })
     .then(function (response) {
       console.log(response);
@@ -54,6 +43,17 @@ const CustomDialog = () => {
     .catch(function (error) {
       console.log(error);
     });
+
+    // axios.post('http://192.168.0.32:8888/coverletter/', 
+    //   { coverletter_url: "s3://simulation-userdata/coverletter/test.txt",
+    //     position_url: "s3://simulation-userdata/position/test.txt"
+    //   })
+    // .then(function (response) {
+    //   console.log(response);
+    // })
+    // .catch(function (error) {
+    //   console.log(error);
+    // });
 
     router.push('/information');
   };
