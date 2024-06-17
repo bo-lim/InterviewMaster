@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams  } from 'next/navigation';
 import { useRecordWebcam } from 'react-record-webcam';
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { AudioRecorder,useAudioRecorder } from 'react-audio-voice-recorder';
@@ -10,9 +10,7 @@ import ReactPlayer from 'react-player'
 
 const Interview = () => {
   const [start, setStart] = useState(0);
-  const router = useRouter();
-  //받은 데이터값 출력 test
-  // console.log(router.query.data)
+  
   const { 
     activeRecordings, 
     createRecording,
@@ -43,7 +41,7 @@ const Interview = () => {
       secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY,
     },
   });
-  const bucket = 'simulation-userdata'
+  const bucket = process.env.NEXT_PUBLIC_BUCKET_NAME;
   const file_name = Date.now();
   const audio_key = `audio/${file_name + '.mp3'}`;
   const video_key = `video/${file_name + '.webm'}`;
@@ -133,7 +131,14 @@ const Interview = () => {
   };
 
 
-   
+    // useEffect(() => {
+  //   if (start == 0) {
+  //     setTimeout(() => console.log("after"), 10000);
+  //     clickStartButton();
+  //     setStart(1);
+  //   }
+  // }, [start]);
+
 
   // useEffect(() => {
   //   if (router.query.data) {
