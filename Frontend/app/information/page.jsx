@@ -1,14 +1,42 @@
 'use client';
-import React from "react";
+import React, { useEffect, useState } from "react";
 import "../globals.css";
 import DevImg from '../../components/Devlmg';
 import { Button } from "../../components/ui/button";
 import Link from 'next/link';
 import { useSearchParams  } from 'next/navigation';
+import { Cookies } from 'react-cookie';
+import axios from "axios";
 
 
 const Information = () => {
- 
+  const cookies = new Cookies();
+  const [start, setStart] = useState(0);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.post('http://192.168.0.32:8888/coverletter/', {
+          coverletter_url: cookies.get('coverletter_url'),
+          position: cookies.get('position')
+        });
+
+        console.log(response);
+        console.log(response.data.response);
+
+        // 쿠키에 데이터 저장
+        cookies.set('simul_info', response.data.response);
+        cookies.set('simul_ques', response.data.question);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+    if(start==0){
+      setStart(1);
+      fetchData();
+    }
+  }, []);
+
   return (
     <section className="min-h-screen pt-12">
       <div className="container mx-auto">

@@ -1,6 +1,5 @@
 'use client';
-import axios from "axios"
-import { postItv } from "../api"; // API 호출 함수
+import axios from "axios";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation'; // next/navigation에서 useRouter를 가져옴
 import { Button } from "../../components/ui/button";
@@ -16,12 +15,15 @@ import {
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { Cookies } from 'react-cookie';
 
 const CustomDialog = () => {
-  const user_id = '';
+  const cookies = new Cookies();
+  const user_id = "ygang4546@gmail.com";
   const [step, setStep] = useState(1);
   const [job, setJob] = useState("");
   const [file, setFile] = useState(null);
+  const [ userText, setUserText ] = useState("")
   // const [userId, setUserId] = useState(""); // user_id 상태 추가
   // const [textUrl, setTextUrl] = useState(""); // itv_text_url 상태 추가
   const router = useRouter();
@@ -38,6 +40,7 @@ const CustomDialog = () => {
     setStep(step + 1);
   };
   const file_key = `coverletter/${user_id}_${Date.now()}_`;
+
   const handleSubmit = async () => {
     console.log(file);
     const command = new PutObjectCommand({
@@ -52,37 +55,26 @@ const CustomDialog = () => {
       console.error(err);
     }
     // FormData 생성 및 데이터 추가
+   
+    // console.log(response2);
  
-    axios.post('http://192.168.0.66:8001/new_itv', 
-      {user_id: "ygang4546@gmail.com",
+    const response = axios.post('http://192.168.0.66:8001/new_itv', 
+      {user_id: user_id,
         itv_text_url: file_key+file.name,
         itv_job: job,
         itv_cate: "자소서"
       })
     .then(function (response) {
       console.log(response);
+      cookies.set('itv_no', response.data.new_itv_no);
+      cookies.set('coverletter_url', `s3://${bucket}/${file_key}${file.name}`);
+      cookies.set('position', job);
     })
     .catch(function (error) {
       console.log(error);
     });
 
-    const response2 = await axios.post('http://192.168.0.32:8888/coverletter/',
-      { coverletter_url: "s3://simulation-userdata/coverletter/test.txt",
-        position_url: "s3://simulation-userdata/position/test.txt"
-      })
-    .then(function (response) {
-      console.log(response);
-      console.log(response.data.response);
-      router.push('/infromation?data='+response.data.response);
-    })
-    .catch(function (error) {
-      console.log(error);
-    });
-    console.log(response2);
-
-    // 응답 데이터를 localStorage에 저장
-    //localStorage.setItem('interviewData', JSON.stringify(response2.response));
-  
+    
 
     router.push('/information');
   };

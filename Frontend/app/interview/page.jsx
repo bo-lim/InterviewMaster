@@ -1,16 +1,18 @@
 'use client';
 import React, { useEffect, useState } from "react";
-import { useRouter, useSearchParams  } from 'next/navigation';
 import { useRecordWebcam } from 'react-record-webcam';
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { AudioRecorder,useAudioRecorder } from 'react-audio-voice-recorder';
 import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
-import YouTube, { YouTubeProps } from 'react-youtube';
+import axios from "axios";
 import ReactPlayer from 'react-player'
+import { Cookies } from "react-cookie";
 
 const Interview = () => {
+  const cookies = new Cookies();
   const [start, setStart] = useState(0);
-  
+  const [question,setQuestion] = useState(cookies.get('simul_info'));
+  const [frontQ, setFrontQ] = useState(cookies.get('simul_ques'));
   const { 
     activeRecordings, 
     createRecording,
@@ -42,7 +44,7 @@ const Interview = () => {
     },
   });
   const bucket = process.env.NEXT_PUBLIC_BUCKET_NAME;
-  const file_name = Date.now();
+  const [file_name,setFileName] = useState('');
   const audio_key = `audio/${file_name + '.mp3'}`;
   const video_key = `video/${file_name + '.webm'}`;
   const recorderControls = useAudioRecorder();
@@ -60,10 +62,10 @@ const Interview = () => {
       console.error(err);
     }
   };
-  const polly = () => {
+  const polly = (text) => {
     const params = {
       "OutputFormat": "mp3",
-      "Text": "안녕하세요. 테스트 중입니다.",
+      "Text": text,
       "TextType": "text",
       "VoiceId": "Seoyeon"
     };
@@ -72,24 +74,18 @@ const Interview = () => {
       polly_client.send(command)
       .then(async (data) => {
         // Convert the ArrayBuffer to a Blob
-        console.log(data.AudioStream)
         const arrayBuffer = await data.AudioStream.transformToByteArray();
-        console.log(arrayBuffer)
         const blob = new Blob([arrayBuffer], { type: 'audio/mp3' });
-        console.log(blob)
 
         // Create a URL for the Blob and play the audio
         const audioUrl = URL.createObjectURL(blob);
-        console.log(audioUrl)
         const audio = new Audio(audioUrl);
-        console.log(audio)
         audio.play();
       })
     }catch(err){
       console.log(err);
     }
   }
-  
 
   const postVideo = async () => {
     try {
@@ -97,7 +93,7 @@ const Interview = () => {
       if (!recording) return;
       await openCamera(recording.id);
       await startRecording(recording.id);
-      await new Promise(resolve => setTimeout(resolve, 6000)); // Record for 3 seconds
+      await new Promise(resolve => setTimeout(resolve, 600000)); // Record for 3 seconds
       await clickStopButton(recording.id);
     } catch (error) {
       console.log({error});
@@ -117,27 +113,58 @@ const Interview = () => {
     } catch (err) {
       console.error(err);
     }
-    await closeCamera(recording_id);
+    await cancelRecording(recording_id);
+    //await closeCamera(recording_id);
+  };
+
+  const fetchSTT = async () => {
+    try {
+      const response = await axios.post('http://192.168.0.9:8002/speech/stt', {
+        user_id: cookies.get('itv_no'),
+        file_path: audio_key,
+      });
+      console.log(response);
+      console.log(response.data.s3_file_path);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   const clickStartButton = async () => {
-    postVideo();
-    recorderControls.startRecording();
+    if (start == 1) {
+      postVideo();
+      recorderControls.startRecording();
+    }
+    
   };
 
-  const clickStopButton = async (recording_id) => {
+  const clickStopButton = (recording_id) => {
+    setFileName(Date.now());
     recorderControls.stopRecording();
     stopAndUpload(recording_id);
+    // fetchSTT();
   };
 
+//   const fetchChat = async () => {
+//     try {
+//       const response = await axios.post('http://192.168.0.32:8888/chat/', {
+//         text_url: ,
+//       });
+//       console.log(response.data.response);
+//     } catch (error) {
+//       console.log(error);
+//     }
+// };
 
-    // useEffect(() => {
-  //   if (start == 0) {
-  //     setTimeout(() => console.log("after"), 10000);
-  //     clickStartButton();
-  //     setStart(1);
-  //   }
-  // }, [start]);
+
+
+
+  useEffect(() => {
+  if (start == 0) {
+    polly(question);
+    setStart(1);
+  }
+}, [start]);
 
 
   // useEffect(() => {
@@ -151,8 +178,7 @@ const Interview = () => {
       <div className="my-8">
         <h2 className="text-3xl font-semibold mb-4">면접 질문</h2>
         <div className="bg-gray-100 p-4 mb-8">
-          <p className="text-lg">여기에 면접 질문 내용이 들어갑니다.</p>
-          <p className="text-lg">예시 질문: 자기소개, 경험, 역량 등</p>
+          <p className="text-lg">{frontQ}</p>
         </div>
       </div>
       <div className="relative">
@@ -165,9 +191,6 @@ const Interview = () => {
           playing={true}
           volume="0" />
         </div>
-        <button onClick={() => clickStartButton()} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
-          Start
-        </button>
         <div style={{display: 'none' }}>
         <AudioRecorder 
           onRecordingComplete={addAudioElement}
@@ -179,6 +202,11 @@ const Interview = () => {
           recorderControls={recorderControls}
         />
       </div>
+        <button onClick={clickStartButton} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+          Start
+        </button>
+        <button onClick={fetchSTT}>STT</button>
+        
       </div>
       <div className="text-center mt-8">
         {activeRecordings.map(recording => (
