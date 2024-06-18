@@ -16,17 +16,20 @@ const Information = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.post('http://192.168.0.32:8888/coverletter/', {
-          coverletter_url: cookies.get('coverletter_url'),
-          position: cookies.get('position')
-        });
+        const response = await axios.post(`${process.env.NEXT_PUBLIC_CAHT_POST_API}/coverletter/`, 
+          {
+            coverletter_url: cookies.get('coverletter_url'),
+            position: cookies.get('position')
+          });
 
         console.log(response);
-        console.log(response.data.response);
+        //console.log(response.data.response);
+        console.log(response.data.thread_id);
 
         // 쿠키에 데이터 저장
         cookies.set('simul_info', response.data.response);
         cookies.set('simul_ques', response.data.question);
+        cookies.set('thread_id', response.data.thread_id);
       } catch (error) {
         console.log(error);
       }

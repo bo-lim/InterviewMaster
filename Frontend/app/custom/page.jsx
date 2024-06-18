@@ -2,10 +2,10 @@
 import axios from "axios"
 import DevImg from '../../components/Devlmg';
 import Badge from "../../components/Badge";
-import { postItv } from "../api"; // API 호출 함수
 import { useState } from 'react';
 import { useRouter } from 'next/navigation'; // next/navigation에서 useRouter를 가져옴
 import { Button } from "../../components/ui/button";
+import { Cookies } from 'react-cookie';
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,7 @@ import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { RiBriefcase4Fill, RiTeamFill, RiTodoFill } from "react-icons/ri";
 
 const CustomDialog = () => {
-  const user_id = '';
+  const user_id = 'ygang4546@gmail.com';
   const [step, setStep] = useState(1);
   const [job, setJob] = useState("");
   const [file, setFile] = useState(null);
@@ -42,6 +42,8 @@ const CustomDialog = () => {
   };
   const file_key = `coverletter/${user_id}_${Date.now()}_`;
   const handleSubmit = async () => {
+    const cookies = new Cookies();
+
     console.log(file);
     const command = new PutObjectCommand({
       Key: file_key+file.name,
@@ -56,19 +58,21 @@ const CustomDialog = () => {
     }
     // FormData 생성 및 데이터 추가
  
-    axios.post('http://192.168.0.66:8001/new_itv', 
-      {user_id: "ygang4546@gmail.com",
+    const response = axios.post(`${process.env.NEXT_PUBLIC_POST_API}/new_itv`, 
+      {user_id: user_id,
         itv_text_url: file_key+file.name,
         itv_job: job,
         itv_cate: "자소서"
       })
     .then(function (response) {
       console.log(response);
+      cookies.set('itv_no', response.data.new_itv_no);
+      cookies.set('coverletter_url', `s3://${bucket}/${file_key}${file.name}`);
+      cookies.set('position', job);
     })
     .catch(function (error) {
       console.log(error);
     });
-
     
 
     router.push('/information');

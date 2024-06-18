@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from "react";
 import DevImg from "../../components/Devlmg";
 import { Button } from "../../components/ui/button";
+import axios from "axios";
 
-import { getUserList } from "../api"; //api 호출 
 import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
 // import ProjectCard from '@/components/ProjectCard';
 
@@ -19,6 +19,14 @@ import {
 } from "../../components/ui/card"
 import { BUILD_ID_FILE } from "next/dist/shared/lib/constants";
 
+export async function getUserList(user_id) {
+  try {
+    const response = await axios.get(`${process.env.NEXT_PUBLIC_GET_API}/get_user/${user_id}`);
+    return response.data;
+  } catch (error) {
+    throw new Error("Failed to fetch data: " + error.message);
+  }
+}
 
 const Mypage = () => {
   // const [categories, setCategories] = useState(uniqueCategories);

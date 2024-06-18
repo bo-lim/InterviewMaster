@@ -1,18 +1,26 @@
 'use client';
 import React, { useEffect, useState } from "react";
-import { useRecordWebcam } from 'react-record-webcam';
+import { checkAudioCodecPlaybackSupport, useRecordWebcam } from 'react-record-webcam';
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { AudioRecorder,useAudioRecorder } from 'react-audio-voice-recorder';
-import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
+import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly"; 
 import axios from "axios";
 import ReactPlayer from 'react-player'
 import { Cookies } from "react-cookie";
+import { useRouter } from 'next/navigation'; // next/navigation에서 useRouter를 가져옴
+
+
 
 const Interview = () => {
   const cookies = new Cookies();
   const [start, setStart] = useState(0);
   const [question,setQuestion] = useState(cookies.get('simul_info'));
   const [frontQ, setFrontQ] = useState(cookies.get('simul_ques'));
+  const [textPath, setTextPath] = useState("");
+  const [chatQ, setchatQ] = useState("");
+  const router = useRouter()
+
+
   const { 
     activeRecordings, 
     createRecording,
@@ -43,6 +51,8 @@ const Interview = () => {
       secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY,
     },
   });
+
+
   const bucket = process.env.NEXT_PUBLIC_BUCKET_NAME;
   const [file_name,setFileName] = useState('');
   const audio_key = `audio/${file_name + '.mp3'}`;
@@ -119,29 +129,108 @@ const Interview = () => {
 
   const fetchSTT = async () => {
     try {
-      const response = await axios.post('http://192.168.0.9:8002/speech/stt', {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_STT_POST_API}/speech/stt`, {
         user_id: cookies.get('itv_no'),
         file_path: audio_key,
       });
       console.log(response);
-      console.log(response.data.s3_file_path);
-    } catch (error) {
+      console.log('STT 끝');
+      await setTextPath(response.data.s3_file_path);
+
+    //질문 끝난 후 db에 post 
+    axios.post(`${NEXT_PUBLIC_POST_API}/new_qs`, 
+      { 
+        user_id: "ygang4546@gmail.com",
+        itv_no: cookies.get('itv_no'),
+        qs_no: "1",
+        qs_content: cookies.get('simul_ques'),
+        qs_video_url: `s3://simulation-userdata/${video_key}`,
+        qs_audio_url: `s3://simulation-userdata/${audio_key}`,
+        qs_text_url: response.data.s3_file_path
+      })
+    .then(function (response) {
+      console.log(response);
+    })
+    .catch(function (error) {
       console.log(error);
-    }
+    });
+  } catch (error) {
+    console.log(error);
+  }
+    
+      
+    //Q1 끝난 후 Q1에 대한 사용자 답변 text S3 url 꼬리질문 api에 post 
+    
+    try{
+      const response2 = await axios.post(`${process.env.NEXT_PUBLIC_CAHT_POST_API}/chat/`, 
+        { 
+          //text_url: response.data.s3_file_path
+          text_url: "s3://simulation-userdata/text/test.txt",
+          thread_id: cookies.get('thread_id')
+        })
+        console.log(response2);
+        console.log(response2.data.stop)
+        // console.log({
+        //   text_url: response.data.s3_file_path
+        // });
+        setchatQ(response2.data.response);
+        //router.push('/report');
+        if (response2.data.stop === 1) {
+          router.push('/report')
+        }
+        console.log('다음 질문');
+      } catch (error) {
+        console.log(error);
+    }  
   };
+
+  
 
   const clickStartButton = async () => {
     postVideo();
     recorderControls.startRecording();
-    
   };
 
   const clickStopButton = (recording_id) => {
     setFileName(Date.now());
     recorderControls.stopRecording();
     stopAndUpload(recording_id);
-    // fetchSTT();
   };
+
+  const clickNextButton = async() => {
+
+    await setFrontQ(chatQ);   
+    // try{
+
+    //   const response2 = await axios.post('http://192.168.0.4:8888/chat/', 
+    //     { 
+    //       //text_url: response.data.s3_file_path
+    //       text_url: "s3://simulation-userdata/text/test.txt",
+    //       thread_id: cookies.get('thread_id')
+
+    //     })
+    
+    //     console.log(response2);
+    //     console.log(response2.data.stop)
+    //     // console.log({
+    //     //   text_url: response.data.s3_file_path
+    //     // });
+      
+
+    //     setchatQ(response2.data.response);
+    //     if (response2.data.stop === 1) {
+    //       router.push('/report')
+    //     }
+      
+    //     //router.push('/report');
+      
+    //   } catch (error) {
+    //     console.log(error);
+      
+    // }
+    
+
+  } 
 
 //   const fetchChat = async () => {
 //     try {
@@ -203,7 +292,7 @@ const Interview = () => {
         <button onClick={clickStartButton} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
           Start
         </button>
-        <button onClick={fetchSTT}>STT</button>
+        <button onClick={fetchSTT} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">STT</button>
         
       </div>
       <div className="text-center mt-8">
@@ -213,10 +302,14 @@ const Interview = () => {
             <video style={{display: 'none' }} ref={recording.webcamRef} autoPlay muted/>
             {/* <video ref={recording.previewRef} autoPlay loop /> */}
             <button onClick={() => clickStopButton(recording.id)} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
-              Next
+              END
             </button>
+            
           </div>
         ))}
+        <button onClick={clickNextButton} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+              NEXT
+            </button>
       </div>
       
     </div>
