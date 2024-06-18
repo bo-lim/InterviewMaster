@@ -47,7 +47,7 @@ async def get_data():
 # get
 # 입력값 user_id
 # 출력값 user_id, user_inf, user_history
-@app.get("/getuser/{user_id}")
+@app.get("/get_user/{user_id}")
 async def get_user(user_id: str):
 
     user = collection.find_one({"_id": user_id}, {"_id": 0, "user_info": 1, "user_history": 1})
@@ -67,17 +67,40 @@ async def get_user(user_id: str):
 # get
 # 입력값 user_id
 # 출력값 user_id, user_history, itv_info
-@app.get("/getitv/{user_id}")
+@app.get("/get_itv/{user_id}")
 async def get_itv(user_id: str):
 
     user = collection.find_one({"_id": user_id}, {"_id": 0, "user_history": 1})
     itv = collection.find_one({"_id": user_id}, {"_id": 0, "itv_info": 1})
 
-    if not itv:
+    if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
     return {
         "user_id": user_id,
         "user_history": user.get("user_history"),
         "itv_info": itv.get("itv_info")
+    }
+
+
+
+# 면접 조회
+# get
+# 입력값 user_id, itv_
+# 출력값 user_id, user_history, itv_info
+@app.get("/get_itv/{user_id}/{itv_no}")
+async def get_itv_detail(user_id: str, itv_no: str):
+
+    itv = collection.find_one({"_id": user_id}, {"_id": 0, f"itv_info.{itv_no}": 1})
+    print("tt", itv)
+
+    if not itv:
+        raise HTTPException(status_code=404, detail="Itv not found")
+
+    # 내가 원하는 특정 데이터만 가져와서 사용
+    itv_info = itv.get("itv_info", {}).get(itv_no)
+
+    return {
+        "user_id": user_id,
+        "itv_info": {itv_no: itv_info}
     }
