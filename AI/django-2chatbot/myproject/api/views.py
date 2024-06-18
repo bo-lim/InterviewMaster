@@ -14,6 +14,7 @@ import io
 from PyPDF2 import PdfReader
 from docx import Document
 import boto3
+import re
 
 client = OpenAI(
     api_key = settings.OPEN_API_KEY
@@ -72,8 +73,8 @@ class coverletterAPI(APIView):
         return text
     def post(self, request):
         coverletter_url = request.data.get('coverletter_url')
-        position = request.data.get('position_url')
-        # coverletter_url = 's3://simulation-userdata/coverletter/test.txt'
+        position = request.data.get('position')
+        # coverletter_url = 's3://simulation-userdata/coverletter/ygang4546@gmail.com_1718666736269_test.docx'
         # position_url= 's3://simulation-userdata/position/test.txt'
 
         if not coverletter_url :
@@ -83,7 +84,7 @@ class coverletterAPI(APIView):
         request.session['thread_id'] = thread.id
 
         self_intro_text = self.parsing(coverletter_url)
-        # job_desc_text = self.parsing(position_url) 
+        # job_desc_text = self.parsing(position) 
         
         prompt = f"자기소개서: {self_intro_text}\n직무: {position}"
 
@@ -103,12 +104,28 @@ class coverletterAPI(APIView):
             messages_list = list(messages)
         except:
             return Response({'response': 'Error'})
+        
         if messages_list:
             assistant_response=messages_list[-1].content[0].text.value
+            tts, question = self.extract_question(assistant_response)
             stop = 1 if "stop" in assistant_response else 0
-            return Response({'response': assistant_response, 'stop': stop})
+            return Response({'response': tts,'question': question,'stop': stop})
         else:
-            return Response({'response': 'No messages', 'stop': 0})
+            return Response({'response': 'No messages','question': 'No messages','stop': 0})
+        
+    def extract_question(self, response):
+        # 정규 표현식으로 tts와 question을 분리
+        # match = re.search(r'(질문\s?\d+:|꼬리질문:|질문:)(.*)', response)
+        # if match:
+        #     tts = match.group(2).strip()
+        # else:
+        #     tts = ""
+        split_text = re.split(r'질문:|꼬리질문:|질문 1:|질문 2:|질문 3:', response)
+        split_text = [text.strip("*").strip() for text in split_text]
+
+        question = split_text[1]
+        tts = split_text[0] + split_text[1]
+        return tts, question
         
     def wait_on_run(self, run, thread):
         while run.status == "queued" or run.status == "in_progress":
@@ -194,13 +211,29 @@ class chatAPI(APIView):
             messages_list = list(messages)
         except:
             return Response({'response': 'Error'})
+        
         if messages_list:
             assistant_response=messages_list[-1].content[0].text.value
+            tts, question = self.extract_question(assistant_response)
             stop = 1 if "stop" in assistant_response else 0
-            return Response({'reponse': assistant_response, 'stop': stop})
+            return Response({'response': tts,'question': question,'stop': stop})
         else:
             return Response({'response': 'No messages', 'stop': 0})
         
+    def extract_question(self, response):
+        # 정규 표현식으로 tts와 question을 분리
+        # match = re.search(r'(질문\s?\d+:|꼬리질문:|질문:)(.*)', response)
+        # if match:
+        #     tts = match.group(2).strip()
+        # else:
+        #     tts = ""
+        split_text = re.split(r'질문:|꼬리질문:|질문 1:|질문 2:|질문 3:', response)
+        split_text = [text.strip("*").strip() for text in split_text]
+
+        question = split_text[1]
+        tts = split_text[0] + split_text[1]
+        return tts, question
+    
     def wait_on_run(self, run, thread):
         while run.status == "queued" or run.status == "in_progress":
             run = client.beta.threads.runs.retrieve(
@@ -258,4 +291,4 @@ class chatbotAPI(APIView):
                 run_id=run.id,
             )
             time.sleep(0.5)
-        return run   
+        return run
