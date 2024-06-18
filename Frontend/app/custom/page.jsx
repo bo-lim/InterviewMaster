@@ -1,5 +1,8 @@
 'use client';
-import axios from "axios";
+import axios from "axios"
+import DevImg from '../../components/Devlmg';
+import Badge from "../../components/Badge";
+import { postItv } from "../api"; // API 호출 함수
 import { useState } from 'react';
 import { useRouter } from 'next/navigation'; // next/navigation에서 useRouter를 가져옴
 import { Button } from "../../components/ui/button";
@@ -15,15 +18,13 @@ import {
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { Cookies } from 'react-cookie';
+import { RiBriefcase4Fill, RiTeamFill, RiTodoFill } from "react-icons/ri";
 
 const CustomDialog = () => {
-  const cookies = new Cookies();
-  const user_id = "ygang4546@gmail.com";
+  const user_id = '';
   const [step, setStep] = useState(1);
   const [job, setJob] = useState("");
   const [file, setFile] = useState(null);
-  const [ userText, setUserText ] = useState("")
   // const [userId, setUserId] = useState(""); // user_id 상태 추가
   // const [textUrl, setTextUrl] = useState(""); // itv_text_url 상태 추가
   const router = useRouter();
@@ -40,7 +41,6 @@ const CustomDialog = () => {
     setStep(step + 1);
   };
   const file_key = `coverletter/${user_id}_${Date.now()}_`;
-
   const handleSubmit = async () => {
     console.log(file);
     const command = new PutObjectCommand({
@@ -49,26 +49,21 @@ const CustomDialog = () => {
       Bucket: bucket,
     });
     try {
-      const response = s3_client.send(command);
+      const response = await s3_client.send(command);
       console.log(response);
     } catch (err) {
       console.error(err);
     }
     // FormData 생성 및 데이터 추가
-   
-    // console.log(response2);
  
-    const response = axios.post('http://192.168.0.66:8001/new_itv', 
-      {user_id: user_id,
+    axios.post('http://192.168.0.66:8001/new_itv', 
+      {user_id: "ygang4546@gmail.com",
         itv_text_url: file_key+file.name,
         itv_job: job,
         itv_cate: "자소서"
       })
     .then(function (response) {
       console.log(response);
-      cookies.set('itv_no', response.data.new_itv_no);
-      cookies.set('coverletter_url', `s3://${bucket}/${file_key}${file.name}`);
-      cookies.set('position', job);
     })
     .catch(function (error) {
       console.log(error);
@@ -152,11 +147,39 @@ const Custom = () => {
             </h1>
 
             <p className='subtitle max-w-[490px] mx-auto xl:mx-0'>
-              here is custom page
+            "step1. 관심 직무를 적어주세요!"
+            
             </p>
             <div>
               <CustomDialog />
             </div>
+          </div>
+          <div className='hidden xl:flex relative'>
+            <Badge 
+              containerStyles='absolute top-[24%] -left-[5rem]'
+              icon={<RiBriefcase4Fill />}
+              endCountNum={3}
+              badgeText={'Best Service'}
+            />
+            <Badge 
+              containerStyles='absolute top-[80%] -left-[1rem]'
+              icon={<RiTodoFill />}
+              endCountNum={6}
+              endCountText='k'
+              badgeText={'Like Number'}
+            />
+            <Badge 
+              containerStyles='absolute top-[55%] -right-8'
+              icon={<RiTeamFill />}
+              endCountNum={9}
+              endCountText='k'
+              badgeText={'Happy Clients'}
+            />
+
+            <div className='bg-hero_shape2_dark dark:bg-hero_shape2_light w-[500px] h-[500px] bg-no-repeat absolute -top-1 -right-2 bg-opacity-50'></div>
+            <DevImg 
+              containerStyles=' w-[700px] h-[450px] bg-no-repeat relative bg-bottom'
+              imgSrc='/custom/custom.png'/>
           </div>
         </div>
       </div>
