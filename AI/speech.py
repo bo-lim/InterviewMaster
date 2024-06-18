@@ -1,3 +1,5 @@
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from boto3 import Session
 from botocore.exceptions import BotoCoreError, ClientError
 from contextlib import closing
@@ -5,7 +7,6 @@ import os
 import sys
 import subprocess
 from tempfile import gettempdir
-from fastapi import FastAPI
 from pydantic import BaseModel
 from openai import OpenAI
 from datetime import datetime
@@ -13,10 +14,18 @@ from dotenv import load_dotenv
 import torch
 from transformers import PreTrainedTokenizerFast, BartForConditionalGeneration
 
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # 어느곳에서 접근을 허용할 것이냐
+    allow_credentials=True,
+    allow_methods=["*"], # 어떤 메서드에 대해서 허용할 것이냐("GET", "POST")
+    allow_headers=["*"],
+)
 bucket = 'simulation-userdata'
 session = Session(profile_name="bolimuser")
 polly = session.client("polly")
@@ -49,9 +58,11 @@ async def summarize(item: TextItem):
 
 @app.post("/speech/stt", status_code=200)
 async def stt(item: SttItem):
-    file_path = item.file_path.split(bucket)[1][1:]
+    print(item.file_path)
+    # file_path = item.file_path.split(bucket)[1][1:]
+    file_path = item.file_path
     local_file_path = item.user_id+".mp3"
-    s3.download_file(
+    s3.download_file( 
         bucket,
         file_path,
         local_file_path

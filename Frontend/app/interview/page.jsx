@@ -114,7 +114,7 @@ const Interview = () => {
       console.error(err);
     }
     await cancelRecording(recording_id);
-    //await closeCamera(recording_id);
+    await closeCamera(recording_id);
   };
 
   const fetchSTT = async () => {
@@ -131,10 +131,8 @@ const Interview = () => {
   };
 
   const clickStartButton = async () => {
-    if (start == 1) {
-      postVideo();
-      recorderControls.startRecording();
-    }
+    postVideo();
+    recorderControls.startRecording();
     
   };
 
