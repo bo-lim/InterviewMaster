@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, Request
+from typing import Optional
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo import MongoClient
 from pydantic import BaseModel
@@ -45,17 +46,8 @@ collection = db["InterviewMaster"]
 # post
 # 입력값 user_id, emial, 성명, 별명, 성별, 생년월일, 연락처
 @app.post("/create_user")
-async def create_user(request: Request):
+async def create_user(email: str, user_nm: str, user_nicknm: str, user_gender: str, user_birthday: str, user_tel: str):
     try:
-        # 요청 데이터 가져오기
-        data = await request.json()
-        email = data.get("email")
-        user_nm = data.get("user_nm")
-        user_nicknm = data.get("user_nicknm")
-        user_gender = data.get("user_gender")
-        user_birthday = data.get("user_birthday")
-        user_tel = data.get("user_tel")
-
         # 필수 필드 검증
         if not all([email, user_nm, user_nicknm, user_gender, user_birthday, user_tel]):
             raise HTTPException(status_code=400, detail="Missing required fields")
@@ -95,8 +87,9 @@ if __name__ == "__main__":
 
 
 # 마이페이지 수정
-# post
-# 입력값 user_id, 성명, 별명, 성별, 생년월일, 연락처
+# patch
+# 필수 입력값 : user_id
+# None 허용값 : 성명, 별명, 성별, 생년월일, 연락처
 
 # T1@T1.com
 # Faker
@@ -104,8 +97,23 @@ if __name__ == "__main__":
 # 남
 # 1999-09-09
 # 010-9999-9999
-@app.post("/mod_user")
-async def mod_user(user_id: str, user_nm: str, user_nicknm: str, user_gender: str, user_birthday: str, user_tel: str):
+class ItemUser(BaseModel):
+    user_id: str
+    user_nm: Optional[str] = None
+    user_nicknm: Optional[str] = None
+    user_gender: Optional[str] = None
+    user_birthday: Optional[str] = None
+    user_tel: Optional[str] = None
+
+@app.patch("/mod_user")
+async def mod_user(item: ItemUser):
+    user_id = item.user_id
+    user_nm = item.user_nm
+    user_nicknm = item.user_nicknm
+    user_gender = item.user_gender
+    user_birthday = item.user_birthday
+    user_tel = item.user_tel
+
     try:
         # user_id에 해당하는 값 가져오기
         user = collection.find_one({"_id": user_id})
@@ -117,15 +125,15 @@ async def mod_user(user_id: str, user_nm: str, user_nicknm: str, user_gender: st
         # 업데이트할 필드들
         update_fields = {}
 
-        if user_nm != user.get("user_info", {}).get("user_nm"):
+        if user_nm is not None and user_nm != user.get("user_info", {}).get("user_nm"):
             update_fields["user_info.user_nm"] = user_nm    
-        if user_nicknm != user.get("user_info", {}).get("user_nicknm"):
+        if user_nicknm is not None and user_nicknm != user.get("user_info", {}).get("user_nicknm"):
             update_fields["user_info.user_nicknm"] = user_nicknm
-        if user_gender != user.get("user_info", {}).get("user_gender"):
+        if user_gender is not None and user_gender != user.get("user_info", {}).get("user_gender"):
             update_fields["user_info.user_gender"] = user_gender
-        if user_birthday != user.get("user_info", {}).get("user_birthday"):
+        if user_birthday is not None and user_birthday != user.get("user_info", {}).get("user_birthday"):
             update_fields["user_info.user_birthday"] = user_birthday
-        if user_tel != user.get("user_info", {}).get("user_tel"):
+        if user_tel is not None and user_tel != user.get("user_info", {}).get("user_tel"):
             update_fields["user_info.user_tel"] = user_tel
 
         # 업데이트할 필드가 있는 경우에만 업데이트 수행
@@ -145,22 +153,25 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
-# 모의면접 생성
+
+
+# 면접 생성
 # post
-# 입력값 user_id, 자소서 url, 카테고리, 직무
+# 필수 입력값 : user_id, 자소서 url, 카테고리, 직무
+# return값 : new_itv_no
 
 # T1@T1.com
 # http://url...
 # 자소서
 # 프로게이머
-class Item(BaseModel):
+class ItemItv(BaseModel):
     user_id: str
     itv_text_url: str
     itv_cate: str
     itv_job: str
 
 @app.post("/new_itv")
-async def new_itv(item: Item):
+async def new_itv(item: ItemItv):
     user_id = item.user_id
     itv_text_url = item.itv_text_url
     itv_cate = item.itv_cate
@@ -171,7 +182,6 @@ async def new_itv(item: Item):
         user = collection.find_one({"_id": user_id})
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        print("User data:", user)
         
         # 면접번호생성을 위한 데이터 조회
         # 오늘 날짜 / email에서 .뒤부분 잘라내기 / user_history에서 면접번호 가져오기
@@ -199,14 +209,14 @@ async def new_itv(item: Item):
         print(f"New user_itv_cnt: {user_itv_cnt}")
         
         # 면접번호, 면접제목 생성!
-        new_itv_key = f"{user_short_id}_{today_date6}_{str(user_itv_cnt).zfill(3)}"
+        new_itv_no = f"{user_short_id}_{today_date6}_{str(user_itv_cnt).zfill(3)}"
         new_itv_sub = f"{user.get("user_info", {}).get("user_nicknm")}_{itv_cate}_모의면접_{str(user_itv_cnt).zfill(3)}"
-        print(f"New itv_info key: {new_itv_key}")
+        print(f"New itv_info key: {new_itv_no}")
         print(f"New itv_info sub: {new_itv_sub}")
 
         # 면접 데이터 생성
         new_itv_info = {
-            new_itv_key: {
+            new_itv_no: {
                 "itv_sub": new_itv_sub,
                 "itv_text_url": itv_text_url,
                 "itv_cate": itv_cate,
@@ -221,7 +231,7 @@ async def new_itv(item: Item):
         update_query = {
             "$set": {
                 "user_history.user_itv_cnt": user_itv_cnt,
-                f"itv_info.{new_itv_key}": new_itv_info[new_itv_key]
+                f"itv_info.{new_itv_no}": new_itv_info[new_itv_no]
             }
         }
         print("Update query:", update_query)
@@ -231,7 +241,7 @@ async def new_itv(item: Item):
 
         if result.modified_count == 0:
             raise HTTPException(status_code=400, detail="Update failed")
-        return {"message": "Update successful"}
+        return {"message": "Update successful", "new_itv_no": new_itv_no}
 
     except Exception as e:
         print("Exception occurred:", str(e))
@@ -245,7 +255,7 @@ if __name__ == "__main__":
 
 # 질문 종료시 질문정보/결과 저장(n번 수행)
 # post
-# 입력값 user_id, 모의면접번호, 질문번호, 질문내용, 비디오, 오디오, 텍스트 url정보
+# 필수 입력값 : user_id, 면접번호, 질문번호, 질문내용, 비디오, 오디오, 텍스트 url정보
 
 # T1@T1.com
 # T1@T1_240614_001
@@ -254,14 +264,35 @@ if __name__ == "__main__":
 # s3://simulation-userdata/video/1718263662009test.mp4
 # s3://simulation-userdata/audio/1718324990967.mp3
 # s3://simulation-userdata/text/test.txt
-@app.post("/update_qs")
-async def update_qs(user_id: str, itv_no: str, qs_no: str, qs_content: str, qs_video_url: str, qs_audio_url: str, qs_text_url: str):
+class ItemQs(BaseModel):
+    user_id: str
+    itv_no: str
+    qs_no: int
+    qs_content: str
+    qs_video_url: str
+    qs_audio_url: str
+    qs_text_url: str
+
+@app.post("/new_qs")
+async def new_qs(item: ItemQs):
+    user_id = item.user_id
+    itv_no = item.itv_no
+    # qs_no 1 ~ 9 : 문자열 01 ~ 09처리
+    # qs_no 10 ~  : 문자열 처리
+    if 1 <= item.qs_no <= 9:
+        qs_no = f"0{item.qs_no}"
+    elif 10 <= item.qs_no :
+        qs_no = f"{item.qs_no}"
+    qs_content = item.qs_content
+    qs_video_url = item.qs_video_url
+    qs_audio_url = item.qs_audio_url
+    qs_text_url = item.qs_text_url
+
     try:
         # user_id에 해당하는 값 가져오기
         user = collection.find_one({"_id": user_id})
         if not user:
             raise HTTPException(status_code=400, detail="User not found")
-        print("User data:", user)
 
         # 질문번호에 대한 데이터 업데이트
         new_qs_info = {
@@ -299,20 +330,28 @@ if __name__ == "__main__":
 
 
 # 총 질문 개수 반영
-# post
-# 입력값 user_id, 모의면접번호, 질문개수
+# patch
+# 필수 입력값 : user_id, 면접번호, 질문개수
 
 # T1@T1.com
 # T1@T1_240614_001
 # n개
-@app.post("/update_itv_qs_cnt")
-async def update_itv_qs_cnt(user_id: str, itv_no: str, itv_qs_cnt: int):
+class ItemQsCnt(BaseModel):
+    user_id: str
+    itv_no: str
+    itv_qs_cnt: int
+
+@app.patch("/update_itv_qs_cnt")
+async def update_itv_qs_cnt(item: ItemQsCnt):
+    user_id = item.user_id
+    itv_no = item.itv_no
+    itv_qs_cnt = item.itv_qs_cnt
+
     try:
         # user_id에 해당하는 값 가져오기
         user = collection.find_one({"_id": user_id})
         if not user:
             raise HTTPException(status_code=400, detail="User not found")
-        print("User data:", user)
 
         # update문 생성
         update_query = {"$set": {f"itv_info.{itv_no}.itv_qs_cnt": itv_qs_cnt}}
@@ -337,21 +376,31 @@ if __name__ == "__main__":
 
 
 # 면접 종료시 결과url 반영(n번 수행)
-# post
-# 입력값 user_id, 모의면접번호, 질문번호, 피드백 url정보
+# patch
+# 입력값 user_id, 면접번호, 질문번호, 피드백 url정보
 
 # T1@T1.com
 # T1@T1_240614_001
 # 01 ~ n번
 # http://url...
-@app.post("/update_fb")
-async def update_fb(user_id: str, itv_no: str, qs_no: str, qs_fb_url: str):
+class ItemFb(BaseModel):
+    user_id: str
+    itv_no: str
+    qs_no: str
+    qs_fb_url: str
+
+@app.patch("/update_fb")
+async def update_fb(item: ItemFb):
+    user_id = item.user_id
+    itv_no = item.itv_no
+    qs_no = item.qs_no
+    qs_fb_url = item.qs_fb_url
+
     try:
         # user_id에 해당하는 값 가져오기
         user = collection.find_one({"_id": user_id})
         if not user:
             raise HTTPException(status_code=400, detail="User not found")
-        print("User data:", user)
 
         # update문 생성
         update_query = {"$set": {f"itv_info.{itv_no}.qs_info.{qs_no}.qs_fb_url": qs_fb_url}}
