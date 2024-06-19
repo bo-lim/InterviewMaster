@@ -19,6 +19,7 @@ const Interview = () => {
   const [textPath, setTextPath] = useState("");
   const [chatQ, setchatQ] = useState("");
   const router = useRouter()
+  const [count, setCount] = useState(1);
 
 
   const { 
@@ -128,28 +129,35 @@ const Interview = () => {
   };
 
   const fetchSTT = async () => {
+    
+    var text_path = ''
     try {
       const response = await axios.post(`${process.env.NEXT_PUBLIC_STT_POST_API}/speech/stt`, {
-        user_id: cookies.get('itv_no'),
+        itv_no: cookies.get('itv_no'),
         file_path: audio_key,
+        question_no: count,
       });
       console.log(response);
       console.log('STT 끝');
       await setTextPath(response.data.s3_file_path);
-
+      text_path = response.data.s3_file_path;
+      
     //질문 끝난 후 db에 post 
-    axios.post(`${NEXT_PUBLIC_POST_API}/new_qs`, 
+    axios.post(`${process.env.NEXT_PUBLIC_POST_API}/new_qs`, 
       { 
-        user_id: "ygang4546@gmail.com",
+        user_id: cookies.get('email'),
         itv_no: cookies.get('itv_no'),
-        qs_no: "1",
-        qs_content: cookies.get('simul_ques'),
+        qs_no: count,
+        qs_content: frontQ,
         qs_video_url: `s3://simulation-userdata/${video_key}`,
         qs_audio_url: `s3://simulation-userdata/${audio_key}`,
-        qs_text_url: response.data.s3_file_path
+        qs_text_url: text_path
       })
     .then(function (response) {
       console.log(response);
+       // Count 증가
+       setCount(count + 1);
+       console.log(count);
     })
     .catch(function (error) {
       console.log(error);
@@ -165,7 +173,7 @@ const Interview = () => {
       const response2 = await axios.post(`${process.env.NEXT_PUBLIC_CAHT_POST_API}/chat/`, 
         { 
           //text_url: response.data.s3_file_path
-          text_url: "s3://simulation-userdata/text/test.txt",
+          text_url: text_path,
           thread_id: cookies.get('thread_id')
         })
         console.log(response2);
@@ -199,7 +207,8 @@ const Interview = () => {
 
   const clickNextButton = async() => {
 
-    await setFrontQ(chatQ);   
+    await setFrontQ(chatQ);
+    polly(chatQ);
     // try{
 
     //   const response2 = await axios.post('http://192.168.0.4:8888/chat/', 

@@ -5,7 +5,6 @@ import Badge from "../../components/Badge";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation'; // next/navigation에서 useRouter를 가져옴
 import { Button } from "../../components/ui/button";
-import { Cookies } from 'react-cookie';
 import {
   Dialog,
   DialogContent,
@@ -19,9 +18,11 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { RiBriefcase4Fill, RiTeamFill, RiTodoFill } from "react-icons/ri";
+import { Cookies } from "react-cookie";
 
 const CustomDialog = () => {
-  const user_id = 'ygang4546@gmail.com';
+  const cookies = new Cookies();
+  const user_id = cookies.get('email');
   const [step, setStep] = useState(1);
   const [job, setJob] = useState("");
   const [file, setFile] = useState(null);
@@ -42,7 +43,6 @@ const CustomDialog = () => {
   };
   const file_key = `coverletter/${user_id}_${Date.now()}_`;
   const handleSubmit = async () => {
-    const cookies = new Cookies();
 
     console.log(file);
     const command = new PutObjectCommand({
