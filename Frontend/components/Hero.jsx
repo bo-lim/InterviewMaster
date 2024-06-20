@@ -25,7 +25,7 @@ const Hero = () => {
               Web Devoloper
             </div>
             <h1 className='h1 mb-4'>
-              Welcome to <span className='block'>IM</span>
+              Welcome to <span className='block'>InterviewMaster</span>
             </h1>
             <p className='subtitle max-w-[490px] mx-auto xl:mx-0'>
               here is Main page
