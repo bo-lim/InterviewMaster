@@ -55,9 +55,8 @@ const Interview = () => {
 
 
   const bucket = process.env.NEXT_PUBLIC_BUCKET_NAME;
-  const [file_name,setFileName] = useState('');
-  const audio_key = `audio/${file_name + '.mp3'}`;
-  const video_key = `video/${file_name + '.webm'}`;
+  const [audio_key,setAudio_key] = useState('audio/tmp.mp3');
+  const [video_key,setVideo_key] = useState('video/tmp.webm');
   const recorderControls = useAudioRecorder();
   const addAudioElement = (blob) => {
     const command = new PutObjectCommand({
@@ -128,6 +127,18 @@ const Interview = () => {
     // await closeCamera(recording_id);
   };
 
+  const clickStartButton = async () => {
+    postVideo();
+    recorderControls.startRecording();
+  };
+
+  const clickStopButton = (recording_id) => {
+    const file_name = cookies.get('itv_no');
+    setAudio_key(`audio/${file_name + '.mp3'}`);
+    setVideo_key(`video/${file_name + '.webm'}`);
+    recorderControls.stopRecording();
+    stopAndUpload(recording_id);
+  };
   const fetchSTT = async () => {
     
     var text_path = ''
@@ -190,19 +201,6 @@ const Interview = () => {
       } catch (error) {
         console.log(error);
     }  
-  };
-
-  
-
-  const clickStartButton = async () => {
-    postVideo();
-    recorderControls.startRecording();
-  };
-
-  const clickStopButton = (recording_id) => {
-    setFileName(Date.now());
-    recorderControls.stopRecording();
-    stopAndUpload(recording_id);
   };
 
   const clickNextButton = async() => {
