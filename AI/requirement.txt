@@ -1,6 +1,0 @@
-"fastapi[all]"
-transformers
-torch
-boto3
-openai
-python-dotenv

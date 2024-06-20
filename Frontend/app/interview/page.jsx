@@ -55,11 +55,11 @@ const Interview = () => {
 
 
   const bucket = process.env.NEXT_PUBLIC_BUCKET_NAME;
-  const [file_name,setFileName] = useState('');
-  const audio_key = `audio/${file_name + '.mp3'}`;
-  const video_key = `video/${file_name + '.webm'}`;
+  const [audio_key,setAudio_key] = useState('audio/tmp.mp3');
+  const [video_key,setVideo_key] = useState('video/tmp.webm');
   const recorderControls = useAudioRecorder();
   const addAudioElement = (blob) => {
+    console.log(audio_key)
     const command = new PutObjectCommand({
       Key: audio_key,
       Body: blob,
@@ -128,8 +128,22 @@ const Interview = () => {
     // await closeCamera(recording_id);
   };
 
+  const clickStartButton = async () => {
+    postVideo();
+    recorderControls.startRecording();
+  };
+
+  const clickStopButton = (recording_id) => {
+    const file_name = cookies.get('itv_no') + '-' + count;
+    setAudio_key(`audio/${file_name + '.mp3'}`);
+    setVideo_key(`video/${file_name + '.webm'}`);
+    recorderControls.stopRecording();
+    stopAndUpload(recording_id);
+  };
   const fetchSTT = async () => {
-    
+    console.log(audio_key)
+    console.log(cookies.get('itv_no'))
+    console.log(count)
     var text_path = ''
     try {
       const response = await axios.post(`${process.env.NEXT_PUBLIC_STT_POST_API}/stt`, {
@@ -166,7 +180,6 @@ const Interview = () => {
     console.log(error);
   }
     
-      
     //Q1 끝난 후 Q1에 대한 사용자 답변 text S3 url 꼬리질문 api에 post 
     
     try{
@@ -190,19 +203,6 @@ const Interview = () => {
       } catch (error) {
         console.log(error);
     }  
-  };
-
-  
-
-  const clickStartButton = async () => {
-    postVideo();
-    recorderControls.startRecording();
-  };
-
-  const clickStopButton = (recording_id) => {
-    setFileName(Date.now());
-    recorderControls.stopRecording();
-    stopAndUpload(recording_id);
   };
 
   const clickNextButton = async() => {
@@ -241,33 +241,12 @@ const Interview = () => {
 
   } 
 
-//   const fetchChat = async () => {
-//     try {
-//       const response = await axios.post('http://192.168.0.32:8888/chat/', {
-//         text_url: ,
-//       });
-//       console.log(response.data.response);
-//     } catch (error) {
-//       console.log(error);
-//     }
-// };
-
-
-
-
   useEffect(() => {
   if (start == 0) {
     polly(question);
     setStart(1);
   }
 }, [start]);
-
-
-  // useEffect(() => {
-  //   if (router.query.data) {
-  //     setInterviewData(JSON.parse(router.query.data));
-  //   }
-  // }, [router.query.data]);
 
   return (
     <div className="container mx-auto">
@@ -278,10 +257,12 @@ const Interview = () => {
         </div>
       </div>
       <div className="relative">
-        <div className="bg-black text-white rounded-lg overflow-hidden shadow-xl aspect-w-16 aspect-h-9 max-w-5xl mx-auto">
+        <div className="text-center text-white rounded-lg overflow-hidden shadow-xl aspect-w-16 aspect-h-9 max-w-5xl mx-auto">
           {/* 비디오 재생을 위한 <video> 태그 */}
-          <ReactPlayer className="w-full h-auto"
+          <ReactPlayer className="w-full h-auto mx-auto"
           url='https://www.youtube.com/embed/IFmto-5_oK8?si=7uAh7Lb7A8BLjIM0'
+          width="960px"
+          height="540px"
           muted={true}
           loop={true}
           playing={true}
