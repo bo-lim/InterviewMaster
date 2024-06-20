@@ -63,6 +63,9 @@ class TextItem(BaseModel):
 @app.post("/speech/stt", status_code=200)
 async def stt(item: SttItem):
     # file_path = item.file_path.split(bucket)[1][1:]
+    print(item.file_path)
+    print(item.itv_no)
+    print(item.question_no)
     file_path = item.file_path
     local_file_path = item.itv_no+".mp3"
     s3.download_file( 
