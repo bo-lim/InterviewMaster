@@ -67,19 +67,19 @@ const Information = () => {
               <div className="flex items-center">
                 <input type="checkbox" id="checkbox1" className="mr-2" />
                 <label htmlFor="checkbox1" className="text-sm">
-                  체크 박스 1
+                  개인정보 동의
                 </label>
               </div>
               <div className="flex items-center">
                 <input type="checkbox" id="checkbox2" className="mr-2" />
                 <label htmlFor="checkbox2" className="text-sm">
-                  체크 박스 2
+                  카메라 허용
                 </label>
               </div>
               <div className="flex items-center">
                 <input type="checkbox" id="checkbox3" className="mr-2" />
                 <label htmlFor="checkbox3" className="text-sm">
-                  체크 박스 3
+                  마이크 허용
                 </label>
               </div>
             </div>

@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { checkAudioCodecPlaybackSupport, useRecordWebcam } from 'react-record-webcam';
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { AudioRecorder,useAudioRecorder } from 'react-audio-voice-recorder';
-import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly"; 
+import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
 import axios from "axios";
 import ReactPlayer from 'react-player'
 import { Cookies } from "react-cookie";
@@ -21,9 +21,11 @@ const Interview = () => {
   const router = useRouter()
   const [count, setCount] = useState(1);
 
+  const [loadingMessage, setLoadingMessage] = useState(""); // 로딩 메시지 상태 추가
+  const [nextloadingMessage, setNextLoadingMessage] = useState(""); // 로딩 메시지 상태 추가
 
-  const { 
-    activeRecordings, 
+  const {
+    activeRecordings,
     createRecording,
     cancelRecording,
     clearError,
@@ -31,11 +33,11 @@ const Interview = () => {
     closeCamera,
     download,
     errorMessage,
-    openCamera, 
+    openCamera,
     pauseRecording,
     resumeRecording,
-    startRecording, 
-    stopRecording, 
+    startRecording,
+    stopRecording,
   } = useRecordWebcam();
 
   const client = new S3Client({
@@ -65,7 +67,7 @@ const Interview = () => {
       Body: blob,
       Bucket: bucket,
     });
-  
+
     try {
       const response = client.send(command);
       console.log(response);
@@ -129,6 +131,7 @@ const Interview = () => {
   };
 
   const clickStartButton = async () => {
+    setLoadingMessage("말씀해주세요.")
     postVideo();
     recorderControls.startRecording();
   };
@@ -153,12 +156,13 @@ const Interview = () => {
       });
       console.log(response);
       console.log('STT 끝');
+      setLoadingMessage("다음 질문 생성 중입니다. 잠시 기다려주세요."); // 로딩 메시지 설정
       await setTextPath(response.data.s3_file_path);
       text_path = response.data.s3_file_path;
-      
-    //질문 끝난 후 db에 post 
-    axios.post(`${process.env.NEXT_PUBLIC_POST_API}/new_qs`, 
-      { 
+
+    //질문 끝난 후 db에 post
+    axios.post(`${process.env.NEXT_PUBLIC_POST_API}/new_qs`,
+      {
         user_id: cookies.get('email'),
         itv_no: cookies.get('itv_no'),
         qs_no: count,
@@ -179,12 +183,12 @@ const Interview = () => {
   } catch (error) {
     console.log(error);
   }
-    
-    //Q1 끝난 후 Q1에 대한 사용자 답변 text S3 url 꼬리질문 api에 post 
-    
+
+    //Q1 끝난 후 Q1에 대한 사용자 답변 text S3 url 꼬리질문 api에 post
+
     try{
-      const response2 = await axios.post(`${process.env.NEXT_PUBLIC_CAHT_POST_API}/chat/`, 
-        { 
+      const response2 = await axios.post(`${process.env.NEXT_PUBLIC_CAHT_POST_API}/chat/`,
+        {
           //text_url: response.data.s3_file_path
           text_url: text_path,
           thread_id: cookies.get('thread_id')
@@ -200,46 +204,47 @@ const Interview = () => {
           router.push('/report')
         }
         console.log('다음 질문');
+        setLoadingMessage("다음 질문으로 넘어가시려면 NEXT 버튼을 눌러주세요"); // 로딩 메시지 설정
       } catch (error) {
         console.log(error);
-    }  
+    }
   };
 
   const clickNextButton = async() => {
-
+    setLoadingMessage("대답하실 준비가 되면 start버튼을 눌러주세요."); // 로딩 메시지 설정
     await setFrontQ(chatQ);
     polly(chatQ);
     // try{
 
-    //   const response2 = await axios.post('http://192.168.0.4:8888/chat/', 
-    //     { 
+    //   const response2 = await axios.post('http://192.168.0.4:8888/chat/',
+    //     {
     //       //text_url: response.data.s3_file_path
     //       text_url: "s3://simulation-userdata/text/test.txt",
     //       thread_id: cookies.get('thread_id')
 
     //     })
-    
+
     //     console.log(response2);
     //     console.log(response2.data.stop)
     //     // console.log({
     //     //   text_url: response.data.s3_file_path
     //     // });
-      
+
 
     //     setchatQ(response2.data.response);
     //     if (response2.data.stop === 1) {
     //       router.push('/report')
     //     }
-      
+
     //     //router.push('/report');
-      
+
     //   } catch (error) {
     //     console.log(error);
-      
-    // }
-    
 
-  } 
+    // }
+
+
+  }
 
   useEffect(() => {
   if (start == 0) {
@@ -269,12 +274,12 @@ const Interview = () => {
           volume="0" />
         </div>
         <div style={{display: 'none' }}>
-        <AudioRecorder 
+        <AudioRecorder
           onRecordingComplete={addAudioElement}
           audioTrackConstraints={{
             noiseSuppression: true,
             echoCancellation: true,
-          }} 
+          }}
           showVisualizer={true}
           recorderControls={recorderControls}
         />
@@ -283,7 +288,7 @@ const Interview = () => {
           Start
         </button>
         <button onClick={fetchSTT} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">STT</button>
-        
+
       </div>
       <div className="text-center mt-8">
         {activeRecordings.map(recording => (
@@ -294,14 +299,20 @@ const Interview = () => {
             <button onClick={() => clickStopButton(recording.id)} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
               END
             </button>
-            
+
           </div>
         ))}
         <button onClick={clickNextButton} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
               NEXT
             </button>
+            <div>
+            {loadingMessage && <label>{loadingMessage}</label>}
+
+            </div>
+          
+
       </div>
-      
+
     </div>
   );
 };
