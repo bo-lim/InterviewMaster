@@ -132,7 +132,7 @@ const Interview = () => {
     
     var text_path = ''
     try {
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_STT_POST_API}/speech/stt`, {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_STT_POST_API}/stt`, {
         itv_no: cookies.get('itv_no'),
         file_path: audio_key,
         question_no: count,
