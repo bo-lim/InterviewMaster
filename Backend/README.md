@@ -8,7 +8,7 @@ source im/Scripts/activate
 # (참고)가상환경 나오기
 deactivate
 
-# im_project 디렉터리(api_read.py, api_write.py가 있는 디렉터리)로 이동!
+# im_project 디렉터리내 api_read.py, api_write.py가 있는 디렉터리로 이동!
 # app실행 명령어
 read : uvicorn api_read:app --reload --port 8000 --reload
 
