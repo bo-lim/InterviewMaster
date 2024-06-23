@@ -25,6 +25,7 @@ import emblaCarouselAutoplay from "embla-carousel-autoplay";
 export async function getUserList(user_id) {
   try {
     const response = await axios.get(`${process.env.NEXT_PUBLIC_GET_API}/get_user/${user_id}`);
+    console.log("mypage list", response)
     return response.data;
   } catch (error) {
     throw new Error("Failed to fetch data: " + error.message);
@@ -45,7 +46,7 @@ const Mypage = () => {
         console.log(cookies.get('email'));
         const data = await getUserList(cookies.get('email')); // 실제 user_id를 여기에 삽입
         setUserData(data.user_info); //userDsts = data.user_info
-        console.log(userData);
+        console.log("user data", data);
 
       } catch (error) {
         setError("Failed to fetch user data: " + error.message);
