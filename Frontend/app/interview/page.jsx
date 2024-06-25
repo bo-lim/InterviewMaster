@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState,useCallback } from "react";
 import { checkAudioCodecPlaybackSupport, useRecordWebcam } from 'react-record-webcam';
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { AudioRecorder,useAudioRecorder } from 'react-audio-voice-recorder';
@@ -8,6 +8,8 @@ import axios from "axios";
 import ReactPlayer from 'react-player'
 import { Cookies } from "react-cookie";
 import { useRouter } from 'next/navigation'; // next/navigation에서 useRouter를 가져옴
+import { Button } from "@/components/ui/button";
+import { ReloadIcon } from "@radix-ui/react-icons"
 import { create_polly, post_chat, post_new_qs, post_stt, save_audio, save_video } from "../api";
 
 
@@ -20,9 +22,13 @@ const Interview = () => {
   const [chatQ, setchatQ] = useState("");
   const router = useRouter()
   const [count, setCount] = useState(1);
+  const [disabled, setDisabled] = useState(true);
+  const [countdown, setCountdown] = useState(null);
 
-  const [loadingMessage, setLoadingMessage] = useState(""); // 로딩 메시지 상태 추가
+
+  const [loadingMessage, setLoadingMessage] = useState(null); // 로딩 메시지 상태 추가
   const [nextloadingMessage, setNextLoadingMessage] = useState(""); // 로딩 메시지 상태 추가
+  const [message, setMessage] = useState("");
 
   const {
     activeRecordings,
@@ -34,6 +40,7 @@ const Interview = () => {
     download,
     errorMessage,
     openCamera,
+
     pauseRecording,
     resumeRecording,
     startRecording,
@@ -58,6 +65,7 @@ const Interview = () => {
 
   const [audio_key,setAudio_key] = useState('audio/tmp.mp3');
   const [video_key,setVideo_key] = useState('video/tmp.webm');
+
   const recorderControls = useAudioRecorder();
   const addAudioElement = async (blob) => {
     const audio_formData = new FormData()
@@ -82,6 +90,9 @@ const Interview = () => {
     const blob = new Blob([new Uint8Array(arrayBuffer)], { type: 'audio/mp3' });
     const audioUrl = URL.createObjectURL(blob);
     const audio = new Audio(audioUrl);
+    audio.onended = () => {
+      startItv();
+    };
     audio.play();
   }
   // const polly = (text) => {
@@ -143,11 +154,31 @@ const Interview = () => {
     // await closeCamera(recording_id);
   };
 
-  const clickStartButton = async () => {
-    setLoadingMessage("말씀해주세요.")
+  const startItv = useCallback(async () => {
+    // Start postVideo and recording
     postVideo();
     recorderControls.startRecording();
-  };
+
+    // Start the countdown timer
+    setCountdown(5);
+    setMessage("");  // Clear any previous message
+
+    const timer = setInterval(() => {
+      setCountdown(prevCount => {
+        if (prevCount === 1) {
+          clearInterval(timer);
+          setCountdown(null);
+          setMessage("지금 말씀해주세요");
+          return null;
+
+        }
+        return prevCount - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+  
 
   const clickStopButton = (recording_id) => {
     const file_name = cookies.get('itv_no') + '-' + count;
@@ -155,8 +186,14 @@ const Interview = () => {
     setVideo_key(`video/${file_name + '.webm'}`);
     recorderControls.stopRecording();
     stopAndUpload(recording_id);
+    setMessage(null);
+
+
+  
   };
   const fetchSTT = async () => {
+    setLoadingMessage("다음 질문 생성 중입니다. 잠시 기다려주세요."); // 로딩 메시지 설정
+
     console.log(audio_key)
     console.log(cookies.get('itv_no'))
     console.log(count)
@@ -177,6 +214,8 @@ const Interview = () => {
       setLoadingMessage("다음 질문 생성 중입니다. 잠시 기다려주세요."); // 로딩 메시지 설정
       await setTextPath(response.s3_file_path);
       text_path = response.s3_file_path;
+
+   
 
     //질문 끝난 후 db에 post
     const newqs_formData = new FormData();
@@ -211,7 +250,7 @@ const Interview = () => {
     // });
   } catch (error) {
     console.log(error);
-  }
+    }
 
     //Q1 끝난 후 Q1에 대한 사용자 답변 text S3 url 꼬리질문 api에 post
 
@@ -237,18 +276,22 @@ const Interview = () => {
           router.push('/report')
         }
         console.log('다음 질문');
-        setLoadingMessage("다음 질문으로 넘어가시려면 NEXT 버튼을 눌러주세요"); // 로딩 메시지 설정
+       
       } catch (error) {
         console.log(error);
     }
+    // 로딩 메시지 해제 및 startNext 호출
+      setLoadingMessage(null);
+      //startNext();
   };
 
-  const clickNextButton = async() => {
-    setLoadingMessage("대답하실 준비가 되면 start버튼을 눌러주세요."); // 로딩 메시지 설정
-    await setFrontQ(chatQ);
+  const clickNextButton = () => {
+    setFrontQ(chatQ);
     polly(chatQ);
     // try{
 
+    //   const response2 = await axios.post('http://192.168.0.4:8888/chat/',
+    //     {
     //   const response2 = await axios.post('http://192.168.0.4:8888/chat/',
     //     {
     //       //text_url: response.data.s3_file_path
@@ -257,6 +300,7 @@ const Interview = () => {
 
     //     })
 
+
     //     console.log(response2);
     //     console.log(response2.data.stop)
     //     // console.log({
@@ -264,19 +308,21 @@ const Interview = () => {
     //     // });
 
 
+
     //     setchatQ(response2.data.response);
     //     if (response2.data.stop === 1) {
     //       router.push('/report')
     //     }
 
+
     //     //router.push('/report');
+
 
     //   } catch (error) {
     //     console.log(error);
 
+
     // }
-
-
   }
 
   useEffect(() => {
@@ -287,6 +333,7 @@ const Interview = () => {
 }, [start]);
 
   return (
+    
     <div className="container mx-auto">
       <div className="my-8">
         <h2 className="text-3xl font-semibold mb-4">면접 질문</h2>
@@ -294,10 +341,13 @@ const Interview = () => {
           <p className="text-lg">{frontQ}</p>
         </div>
       </div>
+       
+      
       <div className="relative">
         <div className="text-center text-white rounded-lg overflow-hidden shadow-xl aspect-w-16 aspect-h-9 max-w-5xl mx-auto">
           {/* 비디오 재생을 위한 <video> 태그 */}
           <ReactPlayer className="w-full h-auto mx-auto"
+
           url='https://www.youtube.com/embed/IFmto-5_oK8?si=7uAh7Lb7A8BLjIM0'
           width="960px"
           height="540px"
@@ -313,14 +363,34 @@ const Interview = () => {
             noiseSuppression: true,
             echoCancellation: true,
           }}
-          showVisualizer={true}
           recorderControls={recorderControls}
         />
       </div>
-        <button onClick={clickStartButton} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+      <div>
+     
+     {countdown !== null && (
+       <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center">
+         <div className="text-center">
+           <span className="block text-[10rem] font-bold text-white leading-none">
+             {countdown}
+           </span>
+         </div>
+       </div>
+     )}
+     {loadingMessage !==null && (
+        <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center">
+          <div className="text-center">
+            <span className="block text-[3rem] font-bold text-white leading-none">
+              {loadingMessage}
+            </span>
+          </div>
+        </div>
+      )}
+  </div> 
+        {/* <Button onClick={clickStartButton} disabled={disabled}>
           Start
-        </button>
-        <button onClick={fetchSTT} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">STT</button>
+        </Button> */}
+        {/* <Button onClick={fetchSTT}>STT</Button> */}
 
       </div>
       <div className="text-center mt-8">
@@ -329,6 +399,9 @@ const Interview = () => {
             <h2>{recording.status}</h2>
             <video style={{display: 'none' }} ref={recording.webcamRef} autoPlay muted/>
             {/* <video ref={recording.previewRef} autoPlay loop /> */}
+            {message && (
+                <p className="text-red-500 text-xl font-bold">{message}</p>
+              )}
             <button onClick={() => clickStopButton(recording.id)} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
               END
             </button>
@@ -338,12 +411,6 @@ const Interview = () => {
         <button onClick={clickNextButton} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
               NEXT
             </button>
-            <div>
-            {loadingMessage && <label>{loadingMessage}</label>}
-
-            </div>
-          
-
       </div>
 
     </div>

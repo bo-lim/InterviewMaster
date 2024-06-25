@@ -3,16 +3,22 @@ import React, { useEffect, useState } from "react";
 import "../globals.css";
 import DevImg from '../../components/Devlmg';
 import { Button } from "../../components/ui/button";
-import Link from 'next/link';
-import { useSearchParams  } from 'next/navigation';
+import { useSearchParams, useRouter  } from 'next/navigation';
 import { Cookies } from 'react-cookie';
 import axios from "axios";
 import { postCV } from "../api";
 
 
+
 const Information = () => {
   const cookies = new Cookies();
   const [start, setStart] = useState(0);
+  const [disabled, setDisabled] = useState(true);
+  const router = useRouter();
+  
+  const handleButton = (event) => {
+    router.push("/interview");
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,6 +29,7 @@ const Information = () => {
         const response = await postCV(newCV_formData)
 
         console.log(response);
+        setDisabled(false);
         //console.log(response.data.response);
         console.log(response.thread_id);
 
@@ -53,10 +60,11 @@ const Information = () => {
           <p className="font-bold text-xl mb-4">아래의 안내사항을 잘 읽고 참여해주세요!</p>
         </div>
         <div className="bg-blue-100 p-4 rounded-md text-left mb-16"> {/* 여기서 mb-16은 아래 간격을 16으로 설정 */}
-          <p className="font-bold text-lg mb-4">1. 곧 시작될 면접에서는 총 12가지 질문이 주어집니다.</p>
+          <p className="h4 font-bold text-lg mb-4">모의 면접 도중, 새로고침은 불가합니다! 이 점 꼭 유의 해주세요.</p>
+          <p className="font-bold text-lg mb-4">1. 면접 질문이 끝나면 5초의 시간이 주어집니다. 5초 후에 답해주세요!</p>
           <p className="font-bold text-lg mb-4">2. 첫 번째 질문에는 자소서를 기반으로 질문이 제공되며, 그 후는 본인이 대답한 내용에 대한 추가 질문이 주어집니다.</p>
           <p className="font-bold text-lg mb-4">3. 질문에 대답하지 못할 경우, 자소서 기반의 새로운 주제의 질문이 주어집니다.</p>
-          <p className="font-bold text-lg">4. 답변 시간은 90초이며 그 전이라도 답변이 완료되면 NEXT버튼을 누르면 됩니다.</p>
+          <p className="font-bold text-lg">4. 답변을 완료하면 END 버튼을 꼭 눌러주세요!</p>
         </div>
         <div className="bg-blue-50 p-8 rounded-md text-left mb-10 flex items-center"> {/* 추가적인 파란색 박스 */}
           <div className="flex-1">
@@ -67,19 +75,19 @@ const Information = () => {
               <div className="flex items-center">
                 <input type="checkbox" id="checkbox1" className="mr-2" />
                 <label htmlFor="checkbox1" className="text-sm">
-                  개인정보 동의
+                  개인 정보 동의
                 </label>
               </div>
               <div className="flex items-center">
                 <input type="checkbox" id="checkbox2" className="mr-2" />
                 <label htmlFor="checkbox2" className="text-sm">
-                  카메라 허용
+                  카메라 녹화 허용
                 </label>
               </div>
               <div className="flex items-center">
                 <input type="checkbox" id="checkbox3" className="mr-2" />
                 <label htmlFor="checkbox3" className="text-sm">
-                  마이크 허용
+                  비디오 녹화 허용
                 </label>
               </div>
             </div>
@@ -92,11 +100,11 @@ const Information = () => {
         </div>
         {/* 버튼 추가 */}
         <div className="flex justify-center">
-          <Link href='/interview'>
-            <Button className='gap-x-2 py-3 px-6 text-lg'>
+       
+            <Button onClick={handleButton} disabled={disabled} className='gap-x-2 py-3 px-6 text-lg'>
               Start
             </Button>
-          </Link>
+         
         </div>
       </div>
     </section>

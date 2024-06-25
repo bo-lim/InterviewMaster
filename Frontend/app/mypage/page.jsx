@@ -44,10 +44,8 @@ const Mypage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log(cookies.get('email'));
-        const data = await getUserList(cookies.get('email')); // 실제 user_id를 여기에 삽입
-        
-        console.log("user data", data);
+        console.log(cookies.get('user_id'));
+        const data = await getUserList(cookies.get('user_id')); // 실제 user_id를 여기에 삽입
         setUserData(data.user_info); //userDsts = data.user_info
 
       } catch (error) {
@@ -133,6 +131,8 @@ const Mypage = () => {
                     <CardFooter className="flex justify-between">
                     
                      <Button className='gap-x-2'>Update</Button>
+                     <Button className='gap-x-2'>로그아웃</Button>
+
                     </CardFooter>
                   </Card>
                   

@@ -10,7 +10,7 @@ router = routers.DefaultRouter()
 urlpatterns = [
     # path('', views.query_view, name='query_view'),
     path('', include(router.urls)),
-    path('coverletter/', coverletterAPI.as_view(), name='coverletter'),
-    path('chat/', chatAPI.as_view(), name='chat'),
+    path('question/coverletter/', coverletterAPI.as_view(), name='coverletter'),
+    path('question/chat/', chatAPI.as_view(), name='chat'),
     path('chatbot/', chatbotAPI.as_view(), name='chatbot'),
 ]

@@ -8,6 +8,7 @@ const links = [
   //{path: '/login', name: 'login'},
   {path: '/custom', name: 'custom'},
   {path: '/mypage', name: 'mypage'},
+  {path: '/login', name: '로그인'}
   //{path: '/likework', name: 'likework'},
 
 ];

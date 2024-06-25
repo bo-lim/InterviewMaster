@@ -57,23 +57,6 @@ const CustomDialog = () => {
     cookies.set('itv_no', response.new_itv_no);
     cookies.set('coverletter_url', file_path);
     cookies.set('position', job);
-
- 
-    // const response = axios.post(`${process.env.POST_API}/new_itv`, 
-    //   {user_id: user_id,
-    //     itv_text_url: file_key,
-    //     itv_job: job,
-    //     itv_cate: "자소서"
-    //   })
-    // .then(function (response) {
-    //   console.log(response);
-    //   cookies.set('itv_no', response.data.new_itv_no);
-    //   cookies.set('coverletter_url', `s3://${bucket}/${file_key}`);
-    //   cookies.set('position', job);
-    // })
-    // .catch(function (error) {
-    //   console.log(error);
-    // });
     
 
     router.push('/information');
@@ -84,7 +67,7 @@ const CustomDialog = () => {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className='gap-x-2'>Start !</Button>
+        <Button className='gap-x-2 w-32'>Start !</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -152,7 +135,7 @@ const Custom = () => {
             </h1>
 
             <p className='subtitle max-w-[490px] mx-auto xl:mx-0'>
-            "step1. 관심 직무를 적어주세요!"
+            "아래 스타트 버튼을 눌러서 시작하세요!"
             
             </p>
             <div>
