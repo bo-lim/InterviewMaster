@@ -12,19 +12,14 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }) {
-  const isAuthPage = children.type && children.type.name === 'Auth';
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.variable}>
         <ThemeProvider attribute="class" defaultTheme='light'>
           <Header />
-          {isAuthPage ? (
-            <Suspense fallback={<div>Loading...</div>}>
-              {children}
-            </Suspense>
-          ) : (
-            children
-          )}
+          <Suspense fallback={<div>Loading...</div>}>
+            {children}
+          </Suspense>
           {/* //<Footer /> */}
         </ThemeProvider>
         </body>
