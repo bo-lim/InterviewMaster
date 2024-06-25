@@ -83,7 +83,7 @@ const CustomDialog = () => {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className='gap-x-2'>Start !</Button>
+        <Button className='gap-x-2 w-32'>Start !</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -151,7 +151,7 @@ const Custom = () => {
             </h1>
 
             <p className='subtitle max-w-[490px] mx-auto xl:mx-0'>
-            "step1. 관심 직무를 적어주세요!"
+            "아래 스타트 버튼을 눌러서 시작하세요!"
             
             </p>
             <div>

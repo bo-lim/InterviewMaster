@@ -1,13 +1,15 @@
 'use client';
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState,useCallback } from "react";
 import { checkAudioCodecPlaybackSupport, useRecordWebcam } from 'react-record-webcam';
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { AudioRecorder,useAudioRecorder } from 'react-audio-voice-recorder';
-import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly"; 
+import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
 import axios from "axios";
 import ReactPlayer from 'react-player'
 import { Cookies } from "react-cookie";
 import { useRouter } from 'next/navigation'; // next/navigation에서 useRouter를 가져옴
+import { Button } from "@/components/ui/button";
+import { ReloadIcon } from "@radix-ui/react-icons"
 
 
 
@@ -20,10 +22,16 @@ const Interview = () => {
   const [chatQ, setchatQ] = useState("");
   const router = useRouter()
   const [count, setCount] = useState(1);
+  const [disabled, setDisabled] = useState(true);
+  const [countdown, setCountdown] = useState(null);
 
 
-  const { 
-    activeRecordings, 
+  const [loadingMessage, setLoadingMessage] = useState(null); // 로딩 메시지 상태 추가
+  const [nextloadingMessage, setNextLoadingMessage] = useState(""); // 로딩 메시지 상태 추가
+  const [message, setMessage] = useState("");
+
+  const {
+    activeRecordings,
     createRecording,
     cancelRecording,
     clearError,
@@ -31,11 +39,11 @@ const Interview = () => {
     closeCamera,
     download,
     errorMessage,
-    openCamera, 
+    openCamera,
     pauseRecording,
     resumeRecording,
-    startRecording, 
-    stopRecording, 
+    startRecording,
+    stopRecording,
   } = useRecordWebcam();
 
   const client = new S3Client({
@@ -55,24 +63,29 @@ const Interview = () => {
 
 
   const bucket = process.env.NEXT_PUBLIC_BUCKET_NAME;
-  const [file_name,setFileName] = useState('');
-  const audio_key = `audio/${file_name + '.mp3'}`;
-  const video_key = `video/${file_name + '.webm'}`;
+  const [audio_key,setAudio_key] = useState('audio/tmp.mp3');
+  const [video_key,setVideo_key] = useState('video/tmp.webm');
   const recorderControls = useAudioRecorder();
-  const addAudioElement = (blob) => {
+  const addAudioElement = async (blob) => {
+    console.log(audio_key)
     const command = new PutObjectCommand({
       Key: audio_key,
       Body: blob,
       Bucket: bucket,
     });
-  
+
     try {
-      const response = client.send(command);
+      const response = await client.send(command);
       console.log(response);
+      await fetchSTT();
+      
+      
     } catch (err) {
       console.error(err);
     }
   };
+
+  
   const polly = (text) => {
     const params = {
       "OutputFormat": "mp3",
@@ -91,6 +104,10 @@ const Interview = () => {
         // Create a URL for the Blob and play the audio
         const audioUrl = URL.createObjectURL(blob);
         const audio = new Audio(audioUrl);
+
+        audio.onended = () => {
+          startItv();
+        };
         audio.play();
       })
     }catch(err){
@@ -121,6 +138,7 @@ const Interview = () => {
     try {
       const response = await client.send(command);
       console.log(response);
+      //fetchSTT();
     } catch (err) {
       console.error(err);
     }
@@ -128,8 +146,49 @@ const Interview = () => {
     // await closeCamera(recording_id);
   };
 
+  const startItv = useCallback(async () => {
+    // Start postVideo and recording
+    postVideo();
+    recorderControls.startRecording();
+
+    // Start the countdown timer
+    setCountdown(5);
+    setMessage("");  // Clear any previous message
+
+    const timer = setInterval(() => {
+      setCountdown(prevCount => {
+        if (prevCount === 1) {
+          clearInterval(timer);
+          setCountdown(null);
+          setMessage("지금 말씀해주세요");
+          return null;
+
+        }
+        return prevCount - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+  
+
+  const clickStopButton = (recording_id) => {
+    const file_name = cookies.get('itv_no') + '-' + count;
+    setAudio_key(`audio/${file_name + '.mp3'}`);
+    setVideo_key(`video/${file_name + '.webm'}`);
+    recorderControls.stopRecording();
+    stopAndUpload(recording_id);
+    setMessage(null);
+
+
+  
+  };
   const fetchSTT = async () => {
-    
+    setLoadingMessage("다음 질문 생성 중입니다. 잠시 기다려주세요."); // 로딩 메시지 설정
+
+    console.log(audio_key)
+    console.log(cookies.get('itv_no'))
+    console.log(count)
     var text_path = ''
     try {
       const response = await axios.post(`${process.env.NEXT_PUBLIC_STT_POST_API}/stt`, {
@@ -141,10 +200,10 @@ const Interview = () => {
       console.log('STT 끝');
       await setTextPath(response.data.s3_file_path);
       text_path = response.data.s3_file_path;
-      
-    //질문 끝난 후 db에 post 
-    axios.post(`${process.env.NEXT_PUBLIC_POST_API}/new_qs`, 
-      { 
+
+    //질문 끝난 후 db에 post
+    axios.post(`${process.env.NEXT_PUBLIC_POST_API}/new_qs`,
+      {
         user_id: cookies.get('email'),
         itv_no: cookies.get('itv_no'),
         qs_no: count,
@@ -164,14 +223,13 @@ const Interview = () => {
     });
   } catch (error) {
     console.log(error);
-  }
-    
-      
-    //Q1 끝난 후 Q1에 대한 사용자 답변 text S3 url 꼬리질문 api에 post 
-    
+    }
+
+    //Q1 끝난 후 Q1에 대한 사용자 답변 text S3 url 꼬리질문 api에 post
+
     try{
-      const response2 = await axios.post(`${process.env.NEXT_PUBLIC_CAHT_POST_API}/chat/`, 
-        { 
+      const response2 = await axios.post(`${process.env.NEXT_PUBLIC_CAHT_POST_API}/chat/`,
+        {
           //text_url: response.data.s3_file_path
           text_url: text_path,
           thread_id: cookies.get('thread_id')
@@ -187,73 +245,49 @@ const Interview = () => {
           router.push('/report')
         }
         console.log('다음 질문');
+       
       } catch (error) {
         console.log(error);
-    }  
+    }
+    // 로딩 메시지 해제 및 startNext 호출
+      setLoadingMessage(null);
+      //startNext();
   };
 
-  
-
-  const clickStartButton = async () => {
-    postVideo();
-    recorderControls.startRecording();
-  };
-
-  const clickStopButton = (recording_id) => {
-    setFileName(Date.now());
-    recorderControls.stopRecording();
-    stopAndUpload(recording_id);
-  };
-
-  const clickNextButton = async() => {
-
-    await setFrontQ(chatQ);
+  const clickNextButton = () => {
+    setFrontQ(chatQ);
     polly(chatQ);
     // try{
 
-    //   const response2 = await axios.post('http://192.168.0.4:8888/chat/', 
-    //     { 
+    //   const response2 = await axios.post('http://192.168.0.4:8888/chat/',
+    //     {
     //       //text_url: response.data.s3_file_path
     //       text_url: "s3://simulation-userdata/text/test.txt",
     //       thread_id: cookies.get('thread_id')
 
     //     })
-    
+
     //     console.log(response2);
     //     console.log(response2.data.stop)
     //     // console.log({
     //     //   text_url: response.data.s3_file_path
     //     // });
-      
+
 
     //     setchatQ(response2.data.response);
     //     if (response2.data.stop === 1) {
     //       router.push('/report')
     //     }
-      
+
     //     //router.push('/report');
-      
+
     //   } catch (error) {
     //     console.log(error);
-      
+
     // }
-    
-
-  } 
-
-//   const fetchChat = async () => {
-//     try {
-//       const response = await axios.post('http://192.168.0.32:8888/chat/', {
-//         text_url: ,
-//       });
-//       console.log(response.data.response);
-//     } catch (error) {
-//       console.log(error);
-//     }
-// };
 
 
-
+  }
 
   useEffect(() => {
   if (start == 0) {
@@ -262,14 +296,8 @@ const Interview = () => {
   }
 }, [start]);
 
-
-  // useEffect(() => {
-  //   if (router.query.data) {
-  //     setInterviewData(JSON.parse(router.query.data));
-  //   }
-  // }, [router.query.data]);
-
   return (
+    
     <div className="container mx-auto">
       <div className="my-8">
         <h2 className="text-3xl font-semibold mb-4">면접 질문</h2>
@@ -277,32 +305,56 @@ const Interview = () => {
           <p className="text-lg">{frontQ}</p>
         </div>
       </div>
+       
+      
       <div className="relative">
-        <div className="bg-black text-white rounded-lg overflow-hidden shadow-xl aspect-w-16 aspect-h-9 max-w-5xl mx-auto">
+        <div className="text-center text-white rounded-lg overflow-hidden shadow-xl aspect-w-16 aspect-h-9 max-w-5xl mx-auto">
           {/* 비디오 재생을 위한 <video> 태그 */}
-          <ReactPlayer className="w-full h-auto"
+          <ReactPlayer className="w-full h-auto mx-auto"
           url='https://www.youtube.com/embed/IFmto-5_oK8?si=7uAh7Lb7A8BLjIM0'
+          width="960px"
+          height="540px"
           muted={true}
           loop={true}
           playing={true}
           volume="0" />
         </div>
         <div style={{display: 'none' }}>
-        <AudioRecorder 
+        <AudioRecorder
           onRecordingComplete={addAudioElement}
           audioTrackConstraints={{
             noiseSuppression: true,
             echoCancellation: true,
-          }} 
-          showVisualizer={true}
+          }}
           recorderControls={recorderControls}
         />
       </div>
-        <button onClick={clickStartButton} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+      <div>
+     
+     {countdown !== null && (
+       <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center">
+         <div className="text-center">
+           <span className="block text-[10rem] font-bold text-white leading-none">
+             {countdown}
+           </span>
+         </div>
+       </div>
+     )}
+     {loadingMessage !==null && (
+        <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center">
+          <div className="text-center">
+            <span className="block text-[3rem] font-bold text-white leading-none">
+              {loadingMessage}
+            </span>
+          </div>
+        </div>
+      )}
+  </div> 
+        {/* <Button onClick={clickStartButton} disabled={disabled}>
           Start
-        </button>
-        <button onClick={fetchSTT} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">STT</button>
-        
+        </Button> */}
+        {/* <Button onClick={fetchSTT}>STT</Button> */}
+
       </div>
       <div className="text-center mt-8">
         {activeRecordings.map(recording => (
@@ -310,17 +362,26 @@ const Interview = () => {
             <h2>{recording.status}</h2>
             <video style={{display: 'none' }} ref={recording.webcamRef} autoPlay muted/>
             {/* <video ref={recording.previewRef} autoPlay loop /> */}
+            {message && (
+                <p className="text-red-500 text-xl font-bold">{message}</p>
+              )}
             <button onClick={() => clickStopButton(recording.id)} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
               END
             </button>
-            
+
           </div>
         ))}
         <button onClick={clickNextButton} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
               NEXT
             </button>
+            {/* <div>
+            {loadingMessage && <label>{loadingMessage}</label>}
+
+            </div> */}
+          
+
       </div>
-      
+
     </div>
   );
 };
