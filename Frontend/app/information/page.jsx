@@ -3,9 +3,9 @@ import React, { useEffect, useState } from "react";
 import "../globals.css";
 import DevImg from '../../components/Devlmg';
 import { Button } from "../../components/ui/button";
-import { useSearchParams, useRouter  } from 'next/navigation';
+import { useRouter  } from 'next/navigation';
 import { Cookies } from 'react-cookie';
-import axios from "axios";
+import { postCV } from "../api";
 
 
 
@@ -22,21 +22,20 @@ const Information = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.post(`${process.env.NEXT_PUBLIC_CAHT_POST_API}/coverletter/`, 
-          {
-            coverletter_url: cookies.get('coverletter_url'),
-            position: cookies.get('position')
-          });
+        const newCV_formData = new FormData();
+        newCV_formData.append('coverletter_url',cookies.get('coverletter_url'));
+        newCV_formData.append('position',cookies.get('position'));
+        const response = await postCV(newCV_formData)
 
         console.log(response);
         setDisabled(false);
         //console.log(response.data.response);
-        console.log(response.data.thread_id);
+        console.log(response.thread_id);
 
-        // 쿠키에 데이터 저장
-        cookies.set('simul_info', response.data.response);
-        cookies.set('simul_ques', response.data.question);
-        cookies.set('thread_id', response.data.thread_id);
+        // // 쿠키에 데이터 저장
+        cookies.set('simul_info', response.response);
+        cookies.set('simul_ques', response.question);
+        cookies.set('thread_id', response.thread_id);
       } catch (error) {
         console.log(error);
       }
