@@ -4,7 +4,7 @@ import DevImg from "../../components/Devlmg";
 import { Cookies } from "react-cookie";
 import { Button } from "../../components/ui/button";
 import axios from "axios";
-
+import { useRouter } from 'next/navigation';
 import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
 // import ProjectCard from '@/components/ProjectCard';
 
@@ -22,7 +22,9 @@ import { BUILD_ID_FILE } from "next/dist/shared/lib/constants";
 
 import emblaCarouselAutoplay from "embla-carousel-autoplay";
 
+
 export async function getUserList(user_id) {
+
   try {
     const response = await axios.get(`http://192.168.0.66:8000/get_user/${user_id}`);
     console.log("mypage list", response)
@@ -55,6 +57,21 @@ const Mypage = () => {
     fetchData();
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      const accessToken = cookies.get('access_token'); // Assuming your access token key is 'access_token'
+      const response = await axios.post('http://192.168.0.66:8002/act/kakao/logout', { access_token: accessToken });
+      if (response.data.logout === 'success') {
+        cookies.remove('access_token'); // Remove access token from cookies
+        console.log("Logged out successfully");
+        router.push('/'); // Redirect to home page or any other page after logout
+      } else {
+        console.error("Logout failed:", response.data); // Log if logout is not successful
+      }
+    } catch (error) {
+      console.error("Logout failed:", error.message);
+    }
+  };
     return (
       <section className="min-h-screen pt-12 bg-blue-100">
         <div className="container mx-auto">
@@ -131,7 +148,7 @@ const Mypage = () => {
                     <CardFooter className="flex justify-between">
                     
                      <Button className='gap-x-2'>Update</Button>
-                     <Button className='gap-x-2'>로그아웃</Button>
+                      <Button className='gap-x-2' onClick={handleLogout}>로그아웃</Button>
 
                     </CardFooter>
                   </Card>

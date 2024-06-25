@@ -327,8 +327,6 @@ const Interview = () => {
           url='https://www.youtube.com/embed/IFmto-5_oK8?si=7uAh7Lb7A8BLjIM0'
           width="960px"
           height="540px"
-          width="960px"
-          height="540px"
           muted={true}
           loop={true}
           playing={true}

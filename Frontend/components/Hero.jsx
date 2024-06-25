@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { Button } from './ui/button'
 import { Download, Send } from 'lucide-react';
+import { Badge } from "./ui/badge"
+
 
 import {
   RiBriefcase4Fill,
@@ -10,7 +12,7 @@ import {
 } from 'react-icons/ri';
 
 import DevImg from './Devlmg';
-import Badge from './Badge';
+
 import Socials from './Socials';
 
 
@@ -22,20 +24,25 @@ const Hero = () => {
         <div className='flex justify-between gap-x-8'>
           <div>
             <div className='text-sm uppercase font-semibold mb-4 text-primary tracking-[4px]'>
-              Web Devoloper
+              Interview Master
             </div>
             <h1 className='h1 mb-4'>
-              Welcome to <span className='block'>InterviewMaster</span>
+              {/* Welcome to <span className='block'>InterviewMaster</span> */}
+              AI 모의 면접
             </h1>
             <p className='subtitle max-w-[490px] mx-auto xl:mx-0'>
-              here is Main page
+              지금 바로 시작하세요!
             </p>
             <div>
+            
               <Link href='/login'>
                 <Button className='gap-x-2'>
                   Start<Send size={18}/>
                   </Button>
               </Link>
+              <div><Badge size={50}>#자소서 기반</Badge>
+              <Badge size={50}>#꼬리 질문</Badge>
+              </div>
              
             </div>
           </div>
