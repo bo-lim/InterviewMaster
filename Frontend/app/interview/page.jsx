@@ -40,6 +40,7 @@ const Interview = () => {
     download,
     errorMessage,
     openCamera,
+
     pauseRecording,
     resumeRecording,
     startRecording,
@@ -65,6 +66,7 @@ const Interview = () => {
   const bucket = process.env.NEXT_PUBLIC_BUCKET_NAME;
   const [audio_key,setAudio_key] = useState('audio/tmp.mp3');
   const [video_key,setVideo_key] = useState('video/tmp.webm');
+
   const recorderControls = useAudioRecorder();
   const addAudioElement = async (blob) => {
     console.log(audio_key)
@@ -73,6 +75,7 @@ const Interview = () => {
       Body: blob,
       Bucket: bucket,
     });
+
 
     try {
       const response = await client.send(command);
@@ -198,8 +201,11 @@ const Interview = () => {
       });
       console.log(response);
       console.log('STT 끝');
+      setLoadingMessage("다음 질문 생성 중입니다. 잠시 기다려주세요."); // 로딩 메시지 설정
       await setTextPath(response.data.s3_file_path);
       text_path = response.data.s3_file_path;
+
+   
 
     //질문 끝난 후 db에 post
     axios.post(`${process.env.NEXT_PUBLIC_POST_API}/new_qs`,
@@ -230,6 +236,7 @@ const Interview = () => {
     try{
       const response2 = await axios.post(`${process.env.NEXT_PUBLIC_CAHT_POST_API}/chat/`,
         {
+    
           //text_url: response.data.s3_file_path
           text_url: text_path,
           thread_id: cookies.get('thread_id')
@@ -261,11 +268,14 @@ const Interview = () => {
 
     //   const response2 = await axios.post('http://192.168.0.4:8888/chat/',
     //     {
+    //   const response2 = await axios.post('http://192.168.0.4:8888/chat/',
+    //     {
     //       //text_url: response.data.s3_file_path
     //       text_url: "s3://simulation-userdata/text/test.txt",
     //       thread_id: cookies.get('thread_id')
 
     //     })
+
 
     //     console.log(response2);
     //     console.log(response2.data.stop)
@@ -274,19 +284,21 @@ const Interview = () => {
     //     // });
 
 
+
     //     setchatQ(response2.data.response);
     //     if (response2.data.stop === 1) {
     //       router.push('/report')
     //     }
 
+
     //     //router.push('/report');
+
 
     //   } catch (error) {
     //     console.log(error);
 
+
     // }
-
-
   }
 
   useEffect(() => {
@@ -311,7 +323,10 @@ const Interview = () => {
         <div className="text-center text-white rounded-lg overflow-hidden shadow-xl aspect-w-16 aspect-h-9 max-w-5xl mx-auto">
           {/* 비디오 재생을 위한 <video> 태그 */}
           <ReactPlayer className="w-full h-auto mx-auto"
+
           url='https://www.youtube.com/embed/IFmto-5_oK8?si=7uAh7Lb7A8BLjIM0'
+          width="960px"
+          height="540px"
           width="960px"
           height="540px"
           muted={true}
@@ -321,6 +336,7 @@ const Interview = () => {
         </div>
         <div style={{display: 'none' }}>
         <AudioRecorder
+
           onRecordingComplete={addAudioElement}
           audioTrackConstraints={{
             noiseSuppression: true,
@@ -374,12 +390,6 @@ const Interview = () => {
         <button onClick={clickNextButton} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
               NEXT
             </button>
-            {/* <div>
-            {loadingMessage && <label>{loadingMessage}</label>}
-
-            </div> */}
-          
-
       </div>
 
     </div>

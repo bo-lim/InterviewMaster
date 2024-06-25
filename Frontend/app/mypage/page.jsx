@@ -24,7 +24,8 @@ import emblaCarouselAutoplay from "embla-carousel-autoplay";
 
 export async function getUserList(user_id) {
   try {
-    const response = await axios.get(`${process.env.NEXT_PUBLIC_GET_API}/get_user/${user_id}`);
+    const response = await axios.get(`http://192.168.0.66:8000/get_user/${user_id}`);
+    console.log("mypage list", response)
     return response.data;
   } catch (error) {
     throw new Error("Failed to fetch data: " + error.message);
@@ -42,10 +43,10 @@ const Mypage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log(cookies.get('email'));
-        const data = await getUserList(cookies.get('email')); // 실제 user_id를 여기에 삽입
+        console.log(cookies.get('user_id'));
+        const data = await getUserList(cookies.get('user_id')); // 실제 user_id를 여기에 삽입
         setUserData(data.user_info); //userDsts = data.user_info
-        console.log(userData);
+        console.log("user data", data);
 
       } catch (error) {
         setError("Failed to fetch user data: " + error.message);
@@ -130,6 +131,8 @@ const Mypage = () => {
                     <CardFooter className="flex justify-between">
                     
                      <Button className='gap-x-2'>Update</Button>
+                     <Button className='gap-x-2'>로그아웃</Button>
+
                     </CardFooter>
                   </Card>
                   

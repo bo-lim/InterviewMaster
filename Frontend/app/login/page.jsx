@@ -2,24 +2,34 @@
 
 import React, { useState } from "react";
 import { Cookies } from "react-cookie";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation";
+import axios from "axios";
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const cookies = new Cookies();
   const router = useRouter();
 
+
   const handleEmailChange = (event) => {
     setEmail(event.target.value);
   };
 
-  const handleButtonClick = (event) => {
-    window.location.href = "http://192.168.0.66:8002/act/kakao"
-    // event.preventDefault()
-    // cookies.set('email',email);
-    // router.push("/custom");
+  const handleButtonClick = async (event) => {
+    window.location.href = "http://192.168.0.66:8002/act/kakao";
+
+   // cookies.set('email',"ygang4546@gmail.com");
+     // 임시 로그인
+    // const response = await axios.get("http://192.168.0.66:8002/act/kakao")
+    
+    // print("in")
+    
+    // console.log(response)
+    // print("out")
+    // console.log(response.data)
+    // print("out2")
   }
 
   return (
@@ -41,6 +51,7 @@ const Login = () => {
           </form>
     </div>
     </div>
+  
   );
 };
 
