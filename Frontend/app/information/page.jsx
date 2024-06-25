@@ -3,9 +3,8 @@ import React, { useEffect, useState } from "react";
 import "../globals.css";
 import DevImg from '../../components/Devlmg';
 import { Button } from "../../components/ui/button";
-import { useSearchParams, useRouter  } from 'next/navigation';
+import { useRouter  } from 'next/navigation';
 import { Cookies } from 'react-cookie';
-import axios from "axios";
 import { postCV } from "../api";
 
 

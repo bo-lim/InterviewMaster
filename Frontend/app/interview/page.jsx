@@ -1,10 +1,7 @@
 'use client';
 import React, { useEffect, useState,useCallback } from "react";
 import { checkAudioCodecPlaybackSupport, useRecordWebcam } from 'react-record-webcam';
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { AudioRecorder,useAudioRecorder } from 'react-audio-voice-recorder';
-import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
-import axios from "axios";
 import ReactPlayer from 'react-player'
 import { Cookies } from "react-cookie";
 import { useRouter } from 'next/navigation'; // next/navigation에서 useRouter를 가져옴
@@ -47,21 +44,6 @@ const Interview = () => {
     stopRecording,
   } = useRecordWebcam();
 
-  // const client = new S3Client({
-  //   region: 'ap-northeast-2',
-  //   credentials: {
-  //     accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID,
-  //     secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY,
-  //   },
-  // });
-  // const polly_client = new PollyClient({
-  //   region: 'ap-northeast-2',
-  //   credentials: {
-  //     accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID,
-  //     secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY,
-  //   },
-  // });
-
 
   const [audio_key,setAudio_key] = useState('audio/tmp.mp3');
   const [video_key,setVideo_key] = useState('video/tmp.webm');
@@ -71,19 +53,8 @@ const Interview = () => {
     const audio_formData = new FormData()
     audio_formData.append('audio_key',audio_key)
     audio_formData.append('blob',blob)
-    save_audio(audio_formData)
-    // const command = new PutObjectCommand({
-    //   Key: audio_key,
-    //   Body: blob,
-    //   Bucket: bucket,
-    // });
-
-    // try {
-    //   const response = client.send(command);
-    //   console.log(response);
-    // } catch (err) {
-    //   console.error(err);
-    // }
+    await save_audio(audio_formData)
+    fetchSTT();
   };
   const polly = async (text) => {
     const arrayBuffer = await create_polly(text);
@@ -95,30 +66,6 @@ const Interview = () => {
     };
     audio.play();
   }
-  // const polly = (text) => {
-  //   const params = {
-  //     "OutputFormat": "mp3",
-  //     "Text": text,
-  //     "TextType": "text",
-  //     "VoiceId": "Seoyeon"
-  //   };
-  //   const command = new SynthesizeSpeechCommand(params);
-  //   try{
-  //     polly_client.send(command)
-  //     .then(async (data) => {
-  //       // Convert the ArrayBuffer to a Blob
-  //       const arrayBuffer = await data.AudioStream.transformToByteArray();
-  //       const blob = new Blob([arrayBuffer], { type: 'audio/mp3' });
-
-  //       // Create a URL for the Blob and play the audio
-  //       const audioUrl = URL.createObjectURL(blob);
-  //       const audio = new Audio(audioUrl);
-  //       audio.play();
-  //     })
-  //   }catch(err){
-  //     console.log(err);
-  //   }
-  // }
 
   const postVideo = async () => {
     try {
@@ -126,7 +73,7 @@ const Interview = () => {
       if (!recording) return;
       await openCamera(recording.id);
       await startRecording(recording.id);
-      await new Promise(resolve => setTimeout(resolve, 600000)); // Record for 3 seconds
+      await new Promise(resolve => setTimeout(resolve, 600000));
       await clickStopButton(recording.id);
     } catch (error) {
       console.log({error});
@@ -139,17 +86,6 @@ const Interview = () => {
     video_formData.append('video_key',video_key)
     video_formData.append('blob',recorded.blob)
     save_video(video_formData);
-    // const command = new PutObjectCommand({
-    //   Key: video_key,
-    //   Body: recorded.blob,
-    //   Bucket: bucket,
-    // });
-    // try {
-    //   const response = await client.send(command);
-    //   console.log(response);
-    // } catch (err) {
-    //   console.error(err);
-    // }
     await cancelRecording(recording_id);
     // await closeCamera(recording_id);
   };
@@ -199,11 +135,6 @@ const Interview = () => {
     console.log(count)
     var text_path = ''
     try {
-      // const response = await axios.post(`${process.env.STT_POST_API}/stt`, {
-      //   itv_no: cookies.get('itv_no'),
-      //   file_path: audio_key,
-      //   question_no: count,
-      // });
       const stt_formData = new FormData();
       stt_formData.append('itv_no',cookies.get('itv_no'));
       stt_formData.append('file_path',audio_key);
@@ -219,7 +150,7 @@ const Interview = () => {
 
     //질문 끝난 후 db에 post
     const newqs_formData = new FormData();
-    newqs_formData.append('user_id',cookies.get('email'));
+    newqs_formData.append('user_id',cookies.get('user_id'));
     newqs_formData.append('itv_no',cookies.get('itv_no'));
     newqs_formData.append('qs_no',count);
     newqs_formData.append('qs_content',frontQ);
@@ -229,25 +160,6 @@ const Interview = () => {
     post_new_qs(newqs_formData);
     // Count 증가
     setCount(count + 1);
-    // axios.post(`${process.env.POST_API}/new_qs`,
-    //   {
-    //     user_id: cookies.get('email'),
-    //     itv_no: cookies.get('itv_no'),
-    //     qs_no: count,
-    //     qs_content: frontQ,
-    //     qs_video_url: `s3://simulation-userdata/${video_key}`,
-    //     qs_audio_url: `s3://simulation-userdata/${audio_key}`,
-    //     qs_text_url: text_path
-    //   })
-    // .then(function (response) {
-    //   console.log(response);
-    //    // Count 증가
-    //    setCount(count + 1);
-    //    console.log(count);
-    // })
-    // .catch(function (error) {
-    //   console.log(error);
-    // });
   } catch (error) {
     console.log(error);
     }
@@ -288,41 +200,6 @@ const Interview = () => {
   const clickNextButton = () => {
     setFrontQ(chatQ);
     polly(chatQ);
-    // try{
-
-    //   const response2 = await axios.post('http://192.168.0.4:8888/chat/',
-    //     {
-    //   const response2 = await axios.post('http://192.168.0.4:8888/chat/',
-    //     {
-    //       //text_url: response.data.s3_file_path
-    //       text_url: "s3://simulation-userdata/text/test.txt",
-    //       thread_id: cookies.get('thread_id')
-
-    //     })
-
-
-    //     console.log(response2);
-    //     console.log(response2.data.stop)
-    //     // console.log({
-    //     //   text_url: response.data.s3_file_path
-    //     // });
-
-
-
-    //     setchatQ(response2.data.response);
-    //     if (response2.data.stop === 1) {
-    //       router.push('/report')
-    //     }
-
-
-    //     //router.push('/report');
-
-
-    //   } catch (error) {
-    //     console.log(error);
-
-
-    // }
   }
 
   useEffect(() => {

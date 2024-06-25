@@ -1,5 +1,4 @@
 'use client';
-import axios from "axios"
 import DevImg from '../../components/Devlmg';
 import Badge from "../../components/Badge";
 import { useState } from 'react';
@@ -19,17 +18,14 @@ import { Label } from "../../components/ui/label";
 // import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { RiBriefcase4Fill, RiTeamFill, RiTodoFill } from "react-icons/ri";
 import { Cookies } from "react-cookie";
-import { postItv, s3_client, uploadFileToS3 } from "../api";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { postItv, uploadFileToS3 } from "../api";
 
 const CustomDialog = () => {
   const cookies = new Cookies();
-  const user_id = cookies.get('email');
+  const user_id = cookies.get('user_id');
   const [step, setStep] = useState(1);
   const [job, setJob] = useState("");
   const [file, setFile] = useState(null);
-  // const [userId, setUserId] = useState(""); // user_id 상태 추가
-  // const [textUrl, setTextUrl] = useState(""); // itv_text_url 상태 추가
   const router = useRouter();
 
 
@@ -40,7 +36,7 @@ const CustomDialog = () => {
   const handleSubmit = async () => {
 
     console.log(file);
-    
+    console.log(user_id);
     const s3_formData = new FormData();
     s3_formData.append('file', file);
     s3_formData.append('user_id',user_id)

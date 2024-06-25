@@ -34,12 +34,12 @@ export const post_chat = async(formData) => {
     if (!response.ok) {
         const errorDetails = await response.text();
         console.error('Error details:', errorDetails);
-        throw new Error("Failed to post new_itv");
+        throw new Error("Failed to post chat");
     }
     return response.json();
   } catch (error) {
     console.error("Error:", error);
-    return "itv 정보 등록에 실패했습니다.";
+    return "Failed to post chat";
   }
 }
 
@@ -70,12 +70,12 @@ export const post_new_qs = async(formData) => {
     if (!response.ok) {
         const errorDetails = await response.text();
         console.error('Error details:', errorDetails);
-        throw new Error("Failed to post new_itv");
+        throw new Error("Failed to post new_qs");
     }
     return response.json();
   } catch (error) {
     console.error("Error:", error);
-    return "itv 정보 등록에 실패했습니다.";
+    return "Failed to post new_qs";
   }
 }
 
@@ -98,14 +98,12 @@ export const post_stt = async(formData) => {
     if (!response.ok) {
         const errorDetails = await response.text();
         console.error('Error details:', errorDetails);
-        throw new Error("Failed to post new_itv");
+        throw new Error("Failed to post stt");
     }
-
-    // console.log("post itv: 등록완료");
     return response.json();
   } catch (error) {
     console.error("Error:", error);
-    return "itv 정보 등록에 실패했습니다.";
+    return "Failed to post stt";
   }
 
 }
@@ -122,7 +120,6 @@ export const save_audio = async(formData) => {
 
   try {
     const response = await s3_client.send(command);
-    console.log(response);
   } catch (err) {
     console.error(err);
   }
@@ -140,7 +137,6 @@ export const save_video = async(formData) => {
   });
   try {
     const response = await s3_client.send(command);
-    console.log(response);
   } catch (err) {
     console.error(err);
   }
@@ -157,7 +153,6 @@ export const create_polly = async (text) => {
   try{
     const data = await polly_client.send(command);
     const arrayBuffer = await data.AudioStream.transformToByteArray();
-    console.log(arrayBuffer)
     return arrayBuffer
   }catch(err){
     console.log(err);
@@ -186,7 +181,6 @@ export async function uploadFileToS3(formData){
 
 export async function getUserList(user_id) { // 함수 인자에 user_id 추가
   const response = await fetch(`${process.env.GET_API}/get_user/${user_id}`); // 템플릿 리터럴로 user_id 포함
-//   console.log("mypage list", response.json())
   if (!response.ok) throw new Error("Failed to fetch data");
   return response.json();
 }
@@ -240,11 +234,11 @@ export async function postCV(formData) {
     if (!response.ok) {
         const errorDetails = await response.text();
         // console.error('Error details:', errorDetails);
-        throw new Error("Failed to post new_itv");
+        throw new Error("Failed to post coverletter");
     }
     return response.json();
   } catch (error) {
     console.error("Error:", error);
-    return "itv 정보 등록에 실패했습니다.";
+    return "Failed to post coverletter";
   }
 }

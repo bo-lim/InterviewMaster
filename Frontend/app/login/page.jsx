@@ -1,11 +1,7 @@
 'use client';
-
 import React, { useState } from "react";
 import { Cookies } from "react-cookie";
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import axios from "axios";
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -20,7 +16,7 @@ const Login = () => {
   const handleButtonClick = async (event) => {
     window.location.href = "http://192.168.0.66:8002/act/kakao";
 
-   // cookies.set('email',"ygang4546@gmail.com");
+  //  cookies.set('user_id',"ygang4546@gmail.com");
      // 임시 로그인
     // const response = await axios.get("http://192.168.0.66:8002/act/kakao")
     
