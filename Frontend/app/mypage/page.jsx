@@ -4,6 +4,7 @@ import DevImg from "../../components/Devlmg";
 import { Cookies } from "react-cookie";
 import { Button } from "../../components/ui/button";
 import axios from "axios";
+import { getUserList } from "../api";
 
 import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
 // import ProjectCard from '@/components/ProjectCard';
@@ -22,15 +23,15 @@ import { BUILD_ID_FILE } from "next/dist/shared/lib/constants";
 
 import emblaCarouselAutoplay from "embla-carousel-autoplay";
 
-export async function getUserList(user_id) {
-  try {
-    const response = await axios.get(`${process.env.NEXT_PUBLIC_GET_API}/get_user/${user_id}`);
-    console.log("mypage list", response)
-    return response.data;
-  } catch (error) {
-    throw new Error("Failed to fetch data: " + error.message);
-  }
-}
+// export async function getUserList(user_id) {
+//   try {
+//     const response = await axios.get(`${process.env.NEXT_PUBLIC_GET_API}/get_user/${user_id}`);
+//     console.log("mypage list", response)
+//     return response.data;
+//   } catch (error) {
+//     throw new Error("Failed to fetch data: " + error.message);
+//   }
+// }
 
 const Mypage = () => {
   const cookies = new Cookies();
@@ -45,8 +46,9 @@ const Mypage = () => {
       try {
         console.log(cookies.get('email'));
         const data = await getUserList(cookies.get('email')); // 실제 user_id를 여기에 삽입
-        setUserData(data.user_info); //userDsts = data.user_info
+        
         console.log("user data", data);
+        setUserData(data.user_info); //userDsts = data.user_info
 
       } catch (error) {
         setError("Failed to fetch user data: " + error.message);

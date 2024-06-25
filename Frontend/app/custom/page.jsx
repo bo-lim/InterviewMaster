@@ -16,9 +16,11 @@ import {
 } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+// import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { RiBriefcase4Fill, RiTeamFill, RiTodoFill } from "react-icons/ri";
 import { Cookies } from "react-cookie";
+import { postItv, s3_client, uploadFileToS3 } from "../api";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
 const CustomDialog = () => {
   const cookies = new Cookies();
@@ -29,50 +31,49 @@ const CustomDialog = () => {
   // const [userId, setUserId] = useState(""); // user_id 상태 추가
   // const [textUrl, setTextUrl] = useState(""); // itv_text_url 상태 추가
   const router = useRouter();
-  const bucket = process.env.NEXT_PUBLIC_BUCKET_NAME;
-  const s3_client = new S3Client({
-    region: 'ap-northeast-2',
-    credentials: {
-      accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY,
-    },
-  });
+
 
   const handleNext = () => {
     setStep(step + 1);
   };
-  const file_key = `coverletter/${user_id}_${Date.now()}_`;
+  
   const handleSubmit = async () => {
 
     console.log(file);
-    const command = new PutObjectCommand({
-      Key: file_key+file.name,
-      Body: file,
-      Bucket: bucket,
-    });
-    try {
-      const response = await s3_client.send(command);
-      console.log(response);
-    } catch (err) {
-      console.error(err);
-    }
-    // FormData 생성 및 데이터 추가
+    
+    const s3_formData = new FormData();
+    s3_formData.append('file', file);
+    s3_formData.append('user_id',user_id)
+    const file_path = await uploadFileToS3(s3_formData);
+    console.log(file_path);
+    const newitv_formData = new FormData();
+    newitv_formData.append('user_id',user_id);
+    newitv_formData.append('itv_text_url',file_path);
+    newitv_formData.append('itv_job',job);
+    newitv_formData.append('itv_cate','자소서');
+    const response = await postItv(newitv_formData);
+
+    console.log(response);
+    cookies.set('itv_no', response.new_itv_no);
+    cookies.set('coverletter_url', file_path);
+    cookies.set('position', job);
+
  
-    const response = axios.post(`${process.env.NEXT_PUBLIC_POST_API}/new_itv`, 
-      {user_id: user_id,
-        itv_text_url: file_key+file.name,
-        itv_job: job,
-        itv_cate: "자소서"
-      })
-    .then(function (response) {
-      console.log(response);
-      cookies.set('itv_no', response.data.new_itv_no);
-      cookies.set('coverletter_url', `s3://${bucket}/${file_key}${file.name}`);
-      cookies.set('position', job);
-    })
-    .catch(function (error) {
-      console.log(error);
-    });
+    // const response = axios.post(`${process.env.POST_API}/new_itv`, 
+    //   {user_id: user_id,
+    //     itv_text_url: file_key,
+    //     itv_job: job,
+    //     itv_cate: "자소서"
+    //   })
+    // .then(function (response) {
+    //   console.log(response);
+    //   cookies.set('itv_no', response.data.new_itv_no);
+    //   cookies.set('coverletter_url', `s3://${bucket}/${file_key}`);
+    //   cookies.set('position', job);
+    // })
+    // .catch(function (error) {
+    //   console.log(error);
+    // });
     
 
     router.push('/information');

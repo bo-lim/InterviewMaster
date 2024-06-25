@@ -40,23 +40,22 @@ const Interview = () => {
     stopRecording,
   } = useRecordWebcam();
 
-  const client = new S3Client({
-    region: 'ap-northeast-2',
-    credentials: {
-      accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY,
-    },
-  });
-  const polly_client = new PollyClient({
-    region: 'ap-northeast-2',
-    credentials: {
-      accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID,
-      secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY,
-    },
-  });
+  // const client = new S3Client({
+  //   region: 'ap-northeast-2',
+  //   credentials: {
+  //     accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID,
+  //     secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY,
+  //   },
+  // });
+  // const polly_client = new PollyClient({
+  //   region: 'ap-northeast-2',
+  //   credentials: {
+  //     accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID,
+  //     secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY,
+  //   },
+  // });
 
 
-  const bucket = process.env.NEXT_PUBLIC_BUCKET_NAME;
   const [audio_key,setAudio_key] = useState('audio/tmp.mp3');
   const [video_key,setVideo_key] = useState('video/tmp.webm');
   const recorderControls = useAudioRecorder();
