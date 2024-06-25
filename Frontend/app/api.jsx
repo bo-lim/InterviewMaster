@@ -1,5 +1,6 @@
 "use server";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
 const bucket = process.env.BUCKET_NAME;
 const s3_client = new S3Client({
     region: 'ap-northeast-2',
@@ -11,11 +12,157 @@ const s3_client = new S3Client({
 const polly_client = new PollyClient({
   region: 'ap-northeast-2',
   credentials: {
-    accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY,
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 });
 
+export const post_chat = async(formData) => {
+  const text_url = formData.get("text_url");
+  const thread_id = formData.get("thread_id");
+
+  try {
+    // user_id 전송
+    const response = await fetch(`${process.env.CHAT_POST_API}/chat/`, {
+      method: 'POST',
+      headers: {"Content-Type": "application/json",},
+      body: JSON.stringify({
+        text_url: text_url,
+        thread_id: thread_id,
+      }),
+    });
+    if (!response.ok) {
+        const errorDetails = await response.text();
+        console.error('Error details:', errorDetails);
+        throw new Error("Failed to post new_itv");
+    }
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    return "itv 정보 등록에 실패했습니다.";
+  }
+}
+
+export const post_new_qs = async(formData) => {
+  const user_id = formData.get("user_id");
+  const itv_no = formData.get("itv_no");
+  const qs_no = formData.get("qs_no");
+  const qs_content = formData.get("qs_content");
+  const qs_video_url = formData.get("qs_video_url");
+  const qs_audio_url = formData.get("qs_audio_url");
+  const qs_text_url = formData.get("qs_text_url");
+
+  try {
+    // user_id 전송
+    const response = await fetch(`${process.env.POST_API}/new_qs`, {
+      method: 'POST',
+      headers: {"Content-Type": "application/json",},
+      body: JSON.stringify({
+        user_id: user_id,
+        itv_no: itv_no,
+        qs_no: qs_no,
+        qs_content: qs_content,
+        qs_video_url: qs_video_url,
+        qs_audio_url: qs_audio_url,
+        qs_text_url: qs_text_url,
+      }),
+    });
+    if (!response.ok) {
+        const errorDetails = await response.text();
+        console.error('Error details:', errorDetails);
+        throw new Error("Failed to post new_itv");
+    }
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    return "itv 정보 등록에 실패했습니다.";
+  }
+}
+
+export const post_stt = async(formData) => {
+  const itv_no = formData.get("itv_no");
+  const file_path = formData.get("file_path");
+  const question_no = formData.get("question_no");
+
+  try {
+    // user_id 전송
+    const response = await fetch(`${process.env.STT_POST_API}/stt`, {
+      method: 'POST',
+      headers: {"Content-Type": "application/json",},
+      body: JSON.stringify({
+        itv_no: itv_no,
+        file_path: file_path,
+        question_no: question_no
+      }),
+    });
+    if (!response.ok) {
+        const errorDetails = await response.text();
+        console.error('Error details:', errorDetails);
+        throw new Error("Failed to post new_itv");
+    }
+
+    // console.log("post itv: 등록완료");
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    return "itv 정보 등록에 실패했습니다.";
+  }
+
+}
+
+export const save_audio = async(formData) => {
+  const blob = formData.get('blob')
+  const arrayBuffer = await blob.arrayBuffer();
+  const audio_key = formData.get('audio_key')
+  const command = new PutObjectCommand({
+    Key: audio_key,
+    Body: arrayBuffer,
+    Bucket: bucket,
+  });
+
+  try {
+    const response = await s3_client.send(command);
+    console.log(response);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+export const save_video = async(formData) => {
+  const video_key = formData.get('video_key')
+  const blob = formData.get('blob')
+  const arrayBuffer = await blob.arrayBuffer();
+
+  const command = new PutObjectCommand({
+    Key: video_key,
+    Body: arrayBuffer,
+    Bucket: bucket,
+  });
+  try {
+    const response = await s3_client.send(command);
+    console.log(response);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+export const create_polly = async (text) => {
+  const params = {
+    "OutputFormat": "mp3",
+    "Text": text,
+    "TextType": "text",
+    "VoiceId": "Seoyeon"
+  };
+  const command = new SynthesizeSpeechCommand(params);
+  try{
+    const data = await polly_client.send(command);
+    const arrayBuffer = await data.AudioStream.transformToByteArray();
+    console.log(arrayBuffer)
+    return arrayBuffer
+  }catch(err){
+    console.log(err);
+  }
+}
 
 export async function uploadFileToS3(formData){
     const file = formData.get('file');
@@ -51,7 +198,6 @@ export async function postItv(formData) {
   const itv_text_url = formData.get("itv_text_url");
   const itv_cate = formData.get("itv_cate");
   const itv_job = formData.get("itv_job");
-//   headers: {"Content-Type": "application/json",},
 
   try {
     // user_id 전송
@@ -65,16 +211,11 @@ export async function postItv(formData) {
         itv_job: itv_job
       }),
     });
-
-    console.log(response)
-
     if (!response.ok) {
         const errorDetails = await response.text();
         console.error('Error details:', errorDetails);
         throw new Error("Failed to post new_itv");
     }
-
-    // console.log("post itv: 등록완료");
     return response.json();
   } catch (error) {
     console.error("Error:", error);
@@ -85,8 +226,6 @@ export async function postItv(formData) {
 export async function postCV(formData) {
   const coverletter_url = formData.get("coverletter_url");
   const position = formData.get("position");
-  console.log(formData);
-
   try {
     // user_id 전송
     const response = await fetch(`${process.env.CHAT_POST_API}/coverletter/`, {
@@ -98,15 +237,11 @@ export async function postCV(formData) {
       }),
     });
 
-    console.log(response)
-
     if (!response.ok) {
         const errorDetails = await response.text();
         // console.error('Error details:', errorDetails);
         throw new Error("Failed to post new_itv");
     }
-
-    // console.log("post itv: 등록완료");
     return response.json();
   } catch (error) {
     console.error("Error:", error);
