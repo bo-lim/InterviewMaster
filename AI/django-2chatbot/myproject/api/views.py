@@ -15,6 +15,7 @@ from PyPDF2 import PdfReader
 from docx import Document
 import boto3
 import re
+import redis
 
 client = OpenAI(
     api_key = settings.OPEN_API_KEY
@@ -71,6 +72,7 @@ class coverletterAPI(APIView):
         else:
             raise ValueError('Unsupported file type')
         return text
+    
     def post(self, request):
         coverletter_url = request.data.get('coverletter_url')
         position = request.data.get('position')
@@ -84,7 +86,7 @@ class coverletterAPI(APIView):
         request.session['thread_id'] = thread.id
 
         self_intro_text = self.parsing(coverletter_url)
-        # job_desc_text = self.parsing(position) 
+        # job_desc_text = self.parsing(position_url) 
         
         prompt = f"자기소개서: {self_intro_text}\n직무: {position}"
 
@@ -109,7 +111,7 @@ class coverletterAPI(APIView):
             assistant_response=messages_list[-1].content[0].text.value
             tts, question = self.extract_question(assistant_response)
             stop = 1 if "stop" in assistant_response else 0
-            return Response({'response': tts,'question': question,'stop': stop})
+            return Response({'response': tts,'question': question,'thread_id': thread.id ,'stop': stop})
         else:
             return Response({'response': 'No messages','question': 'No messages','stop': 0})
         
@@ -121,10 +123,23 @@ class coverletterAPI(APIView):
         # else:
         #     tts = ""
         split_text = re.split(r'질문:|꼬리질문:|질문 1:|질문 2:|질문 3:', response)
-        split_text = [text.strip("*").strip() for text in split_text]
+        split_text = [text.strip("*").strip().strip("-") for text in split_text]
 
-        question = split_text[1]
-        tts = split_text[0] + split_text[1]
+        if split_text[0] =='':
+            split_text = split_text[1:]
+
+        if len(split_text) < 2:
+            question = response
+            tts = response
+        else :
+
+        # tmp = []
+        # for splited in re.split(r'질문', response):
+        #     print(splited)
+        #     tmp.append(splited.strip('*').strip().strip('\n').replace(':',''))
+        # print(tmp)
+            question = split_text[1]
+            tts = split_text[0] + split_text[1]
         return tts, question
         
     def wait_on_run(self, run, thread):
@@ -182,19 +197,23 @@ class chatAPI(APIView):
     def post(self, request):
         text_url = request.data.get('text_url')
         # text_url = 's3://simulation-userdata/text/test.txt'
+        thread_id = request.data.get('thread_id')
+
+        # thread.id = request.session['thread_id']
+        thread = client.beta.threads.retrieve(thread_id=thread_id)
+        
 
         if not text_url:
-            return Response({'response': text_url}, status=400)
+            return Response({'response': text_url, 'thread_id': thread_id}, status=400)
         
-        if 'thread_id' not in request.session :
-            return Response({'response': 'No thread'})
+        # if 'thread_id' not in request.session :
+        #     print('No thread')
+        #     return Response({'response': 'No thread'})
         
-        thread_id = request.session['thread_id']
-        thread = client.beta.threads.retrieve(thread_id=thread_id)
 
-        text_text = self.parsing(text_url)
-        
-        prompt = f"대답: {text_text}"
+        # text_text = self.parsing(text_url)
+
+        prompt = f"대답: {text_url}"
 
         client.beta.threads.messages.create(
             thread_id=thread.id,
@@ -202,12 +221,13 @@ class chatAPI(APIView):
             content=prompt.replace('\n', ' ')
         )
         run = client.beta.threads.runs.create(
-            thread_id=thread.id,
+            thread_id=thread_id,
             assistant_id=assistant_id
         )
         run = self.wait_on_run(run, thread)
+
         try:
-            messages = client.beta.threads.messages.list(thread_id=thread_id, order="asc")
+            messages = client.beta.threads.messages.list(thread_id=thread.id, order="asc")
             messages_list = list(messages)
         except:
             return Response({'response': 'Error'})
@@ -215,7 +235,7 @@ class chatAPI(APIView):
         if messages_list:
             assistant_response=messages_list[-1].content[0].text.value
             tts, question = self.extract_question(assistant_response)
-            stop = 1 if "stop" in assistant_response else 0
+            stop = 1 if "STOP" in assistant_response or "stop" in assistant_response else 0
             return Response({'response': tts,'question': question,'stop': stop})
         else:
             return Response({'response': 'No messages', 'stop': 0})
@@ -228,10 +248,23 @@ class chatAPI(APIView):
         # else:
         #     tts = ""
         split_text = re.split(r'질문:|꼬리질문:|질문 1:|질문 2:|질문 3:', response)
-        split_text = [text.strip("*").strip() for text in split_text]
+        split_text = [text.strip("*").strip().strip("-") for text in split_text]
 
-        question = split_text[1]
-        tts = split_text[0] + split_text[1]
+        if split_text[0] =='':
+            split_text = split_text[1:]
+
+        if len(split_text) < 2:
+            question = response
+            tts = response
+        else :
+
+        # tmp = []
+        # for splited in re.split(r'질문', response):
+        #     print(splited)
+        #     tmp.append(splited.strip('*').strip().strip('\n').replace(':',''))
+        # print(tmp)
+            question = split_text[1]
+            tts = split_text[0] + split_text[1]
         return tts, question
     
     def wait_on_run(self, run, thread):
@@ -279,7 +312,7 @@ class chatbotAPI(APIView):
         
         if messages_list:
             assistant_response = messages_list[-1].content[0].text.value
-            stop = 1 if "stop" in assistant_response else 0
+            stop = 1 if "STOP" in assistant_response else 0
             return Response({'response': assistant_response, 'stop': stop})
         else:
             return Response({'response': 'No messages', 'stop': 0})
