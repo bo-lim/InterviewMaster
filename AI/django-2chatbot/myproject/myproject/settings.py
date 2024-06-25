@@ -38,8 +38,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
-CORS_ORIGIN_WHITELIST = ['http://127.0.0.1:3000','http://localhost:3000', 'http://localhost:8888', 'http://127.0.0.1:8888']
+## CORS
+CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
+
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -101,6 +103,12 @@ DATABASES = {
     }
 }
 
+CACHES = {
+    'default': {
+        'BACKEND': 'redis_cache.RedisCache',
+        'LOCATION': 'localhost:6379',
+    },
+}
 
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
