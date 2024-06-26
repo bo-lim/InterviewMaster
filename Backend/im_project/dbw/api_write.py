@@ -1,25 +1,23 @@
-from typing import Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+from typing import Optional
 from pymongo import MongoClient
 from pydantic import BaseModel
 from datetime import datetime
-import re
+import os, uuid, re
 
-# 테스트 방법
-# uvicorn api_write:app --reload
 # 테스트 방법(외부)
-# 192.168.0.66:8001
 # 192.168.0.66:8001/docs
 # uvicorn api_write:app --host 0.0.0.0 --port 8001 --reload
-
-# 생성 테스트 : cmd창에서 테스트
-# curl -X POST "http://192.168.0.66:8001/create_user" -H "Content-Type: application/json" -d "{\"email\": \"T1@T1.com\", \"user_nm\": \"Faker\", \"user_nicknm\": \"불사대마왕\", \"user_gender\": \"남\", \"user_birthday\": \"1999-09-09\", \"user_tel\": \"010-9999-9999\"}"
 
 # get : 조회 / 파라미터가 url에 유출됨(body에 못 담음)
 # post : 업데이트, 생성 / 파라미터가 url에 유출이 안됨(body에 담아서 보내니까)
 
 app = FastAPI()
+
+# .env파일 읽기
+load_dotenv()
 
 # COSRS옵션 부여
 app.add_middleware(
@@ -32,37 +30,51 @@ app.add_middleware(
 
 # MongoDB 연결 설정(쓰기속도 특화)
 #connection_string = "mongodb://192.168.56.100:32017/?replicaSet=rs0&directConnection=true"
-# MongoDB 연결 설정(k8s)
-connection_string = "mongodb://itm-dtb-mng-svc.itm-dtb-mng-nms.svc.cluster.local:27017/?replicaSet=rs0&readPreference=secondary"
+connection_string = os.getenv("DB_WRITE_LOC_URI")
 client = MongoClient(connection_string)
 db = client["im"]
 collection = db["InterviewMaster"]
 
 
-
-# 회원가입((oauth확인 후 작성)
-
-
-
+###########################
+########### DBW ###########
+###########################
 # 신규 사용자 생성(curl로 입력 받아서 생성 되는 기준으로 작성)  
 # post
 # 입력값 user_id, emial, 성명, 별명, 성별, 생년월일, 연락처
-@app.post("/dbw/create_user")
-async def create_user(email: str, user_nm: str, user_nicknm: str, user_gender: str, user_birthday: str, user_tel: str):
+class ItemUser(BaseModel):
+    user_id: str
+    name: str
+    nickname: str
+    gender: str
+    birthday: str
+    tel: str
+
+@app.post("/create_user")
+async def create_user(item: ItemUser):
+    user_id = item.user_id
+    user_nm = item.name
+    user_nicknm = item.nickname
+    user_gender = item.gender
+    user_birthday = item.birthday
+    user_tel = item.tel
+    
     try:
         # 필수 필드 검증
-        if not all([email, user_nm, user_nicknm, user_gender, user_birthday, user_tel]):
+        if not all([user_id, user_nm, user_nicknm, user_gender, user_birthday, user_tel]):
             raise HTTPException(status_code=400, detail="Missing required fields")
 
         # 이메일을 _id로 사용하여 새 사용자 데이터 생성
         new_user = {
-            "_id": email,
+            "_id": user_id,
             "user_info": {
                 "user_nm": user_nm,
                 "user_nicknm": user_nicknm,
                 "user_gender": user_gender,
                 "user_birthday": user_birthday,
                 "user_tel": user_tel,
+                # 유저의 고유한 값을 생성하기 위해서 uuid4사용(그 중 16진수 hex값 사용)
+                "user_uuid": uuid.uuid4().hex
             },
             "user_history": {
                 "user_itv_cnt": 0
@@ -81,10 +93,6 @@ async def create_user(email: str, user_nm: str, user_nicknm: str, user_gender: s
     except Exception as e:
         print("Exception occurred:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 
@@ -107,7 +115,7 @@ class ItemUser(BaseModel):
     user_birthday: Optional[str] = None
     user_tel: Optional[str] = None
 
-@app.patch("/dbw/mod_user")
+@app.patch("/mod_user")
 async def mod_user(item: ItemUser):
     user_id = item.user_id
     user_nm = item.user_nm
@@ -150,11 +158,6 @@ async def mod_user(item: ItemUser):
         print("Exception occurred:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
 
 
 # 면접 생성
@@ -172,7 +175,7 @@ class ItemItv(BaseModel):
     itv_cate: str
     itv_job: str
 
-@app.post("/dbw/new_itv")
+@app.post("/new_itv")
 async def new_itv(item: ItemItv):
     user_id = item.user_id
     itv_text_url = item.itv_text_url
@@ -190,7 +193,7 @@ async def new_itv(item: ItemItv):
         today_date6 = datetime.today().strftime('%y%m%d')
         today_date8 = datetime.today().strftime('%Y-%m-%d')
         user_id = user.get("_id",{})
-        user_short_id = user.get("_id",{}).split('.')[0]
+        # user_short_id = user.get("_id",{}).split('.')[0]
         user_history = user.get("user_history", {})
         user_itv_cnt = user_history.get("user_itv_cnt")
         print(f"Current user_id: {user_id}")
@@ -211,7 +214,8 @@ async def new_itv(item: ItemItv):
         print(f"New user_itv_cnt: {user_itv_cnt}")
         
         # 면접번호, 면접제목 생성!
-        new_itv_no = f"{user_short_id}_{today_date6}_{str(user_itv_cnt).zfill(3)}"
+        # new_itv_no = f"{user_short_id}_{today_date6}_{str(user_itv_cnt).zfill(3)}"
+        new_itv_no = f"{user.get("user_info", {}).get("user_uuid")}_{today_date6}_{str(user_itv_cnt).zfill(3)}"
         new_itv_sub = f"{user.get("user_info", {}).get("user_nicknm")}_{itv_cate}_모의면접_{str(user_itv_cnt).zfill(3)}"
         print(f"New itv_info key: {new_itv_no}")
         print(f"New itv_info sub: {new_itv_sub}")
@@ -249,10 +253,6 @@ async def new_itv(item: ItemItv):
         print("Exception occurred:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
 
 
 # 질문 종료시 질문정보/결과 저장(n번 수행)
@@ -275,7 +275,7 @@ class ItemQs(BaseModel):
     qs_audio_url: str
     qs_text_url: str
 
-@app.post("/dbw/new_qs")
+@app.post("/new_qs")
 async def new_qs(item: ItemQs):
     user_id = item.user_id
     itv_no = item.itv_no
@@ -325,10 +325,6 @@ async def new_qs(item: ItemQs):
         print("Exception occurred:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
 
 
 # 총 질문 개수 반영
@@ -343,7 +339,7 @@ class ItemQsCnt(BaseModel):
     itv_no: str
     itv_qs_cnt: int
 
-@app.patch("/dbw/update_itv_qs_cnt")
+@app.patch("/update_itv_qs_cnt")
 async def update_itv_qs_cnt(item: ItemQsCnt):
     user_id = item.user_id
     itv_no = item.itv_no
@@ -371,10 +367,6 @@ async def update_itv_qs_cnt(item: ItemQsCnt):
         print("Exception occurred:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
 
 
 # 면접 종료시 결과url 반영(n번 수행)
@@ -391,7 +383,7 @@ class ItemFb(BaseModel):
     qs_no: str
     qs_fb_url: str
 
-@app.patch("/dbw/update_fb")
+@app.patch("/update_fb")
 async def update_fb(item: ItemFb):
     user_id = item.user_id
     itv_no = item.itv_no
@@ -419,7 +411,3 @@ async def update_fb(item: ItemFb):
     except Exception as e:
         print("Exception occurred:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
