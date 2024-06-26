@@ -38,6 +38,7 @@
     "react-player": "^2.16.0",
     "react-record-webcam": "^1.1.5",
     "shadcn-ui": "^0.8.0",
+    "sharp": "^0.33.4",
     "swiper": "^11.1.4",
     "tailwind-merge": "^2.3.0",
     "tailwindcss-animate": "^1.0.7",
