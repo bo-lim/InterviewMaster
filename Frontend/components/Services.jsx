@@ -72,7 +72,7 @@ const Services = () => {
                         <Card>
                           <CardContent className="flex aspect-square items-center justify-center p-6">
                           <Image
-                              src={`/service/carousel-${index + 1}.png`}
+                              src={`/service/service${index + 1}.png`}
                               alt={`Service Icon ${index + 1}`}
                               width={300} // 이미지 폭
                               height={300} // 이미지 높이

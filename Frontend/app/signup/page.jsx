@@ -13,7 +13,7 @@ const Signup = () => {
   const router = useRouter();
 
   const [formData, setFormData] = useState({
-    email: cookies.get('user_id'),
+    user_id: cookies.get('user_id'),
     name: "",
     nickname: "",
     gender: "",
@@ -33,7 +33,7 @@ const Signup = () => {
 
     try {
       // 서버로 폼 데이터 전송
-      const response = await axios.post('http://192.168.0.66:8001/create_user', formData);
+      const response = await axios.post('http://192.168.0.15:30803/dbw/create_user', formData);
       console.log('Server response:', response.data);
 
       // 회원가입 성공 후 페이지 이동

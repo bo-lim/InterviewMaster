@@ -4,10 +4,11 @@ import { checkAudioCodecPlaybackSupport, useRecordWebcam } from 'react-record-we
 import { AudioRecorder,useAudioRecorder } from 'react-audio-voice-recorder';
 import ReactPlayer from 'react-player'
 import { Cookies } from "react-cookie";
-import { useRouter } from 'next/navigation'; // next/navigation에서 useRouter를 가져옴
+import { redirect, useRouter } from 'next/navigation'; // next/navigation에서 useRouter를 가져옴
 import { Button } from "@/components/ui/button";
 import { ReloadIcon } from "@radix-ui/react-icons"
 import { create_polly, post_chat, post_new_qs, post_stt, save_audio, save_video } from "../api";
+import { Camera } from "lucide-react";
 
 
 const Interview = () => {
@@ -37,16 +38,24 @@ const Interview = () => {
     download,
     errorMessage,
     openCamera,
-
+    stopRecording,
     pauseRecording,
     resumeRecording,
     startRecording,
-    stopRecording,
-  } = useRecordWebcam();
+    muteRecording
+  } = useRecordWebcam({mediaTrackConstraints: { video: true, audio: false }});
+
+ 
+
+
+
+  //window.addEventListener('beforeunload', handleBeforeUnload);
+
 
 
   const [audio_key,setAudio_key] = useState('audio/tmp.mp3');
   const [video_key,setVideo_key] = useState('video/tmp.webm');
+  
 
   const recorderControls = useAudioRecorder();
   const addAudioElement = async (blob) => {
@@ -73,6 +82,9 @@ const Interview = () => {
       if (!recording) return;
       await openCamera(recording.id);
       await startRecording(recording.id);
+      await muteRecording(recording.id);
+      
+      
       await new Promise(resolve => setTimeout(resolve, 600000));
       await clickStopButton(recording.id);
     } catch (error) {
@@ -86,8 +98,9 @@ const Interview = () => {
     video_formData.append('video_key',video_key)
     video_formData.append('blob',recorded.blob)
     save_video(video_formData);
+    // await cancelRecording(recording_id);
+    await closeCamera(recording_id);
     await cancelRecording(recording_id);
-    // await closeCamera(recording_id);
   };
 
   const startItv = useCallback(async () => {

@@ -13,10 +13,10 @@ const MobileNav = () => {
       </SheetTrigger>
       <SheetContent>
         <div>
-          <div className='flex flex-col items-center gap-y-32'>
+          <div className='flex flex-col items-center gap-y-32 bg-transparent'>
             <Logo />
             <Nav 
-              containerStyles='flex flex-col items-center gap-y-6' 
+              containerStyles='flex flex-col items-center gap-y-6 bg-transparent' 
               linkStyles='text-2xl' />
           </div>
         </div>

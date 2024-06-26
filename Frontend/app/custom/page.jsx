@@ -1,7 +1,8 @@
 'use client';
 import DevImg from '../../components/Devlmg';
 import Badge from "../../components/Badge";
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import VideoComponent from '../../components/videocomponent';
 import { useRouter } from 'next/navigation'; // next/navigation에서 useRouter를 가져옴
 import { Button } from "../../components/ui/button";
 import {
@@ -57,13 +58,21 @@ const CustomDialog = () => {
 
     router.push('/information');
   };
-
-
+ 
 
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className='gap-x-2 w-32'>Start !</Button>
+        <Button 
+        className='absolute w-[20vw] h-[20vh] text-lg' 
+        style={{ 
+          top: '60%', 
+          left: '12%', 
+          transform: 'translate(-40%, -2%)',
+          backgroundColor: 'transparent', 
+          border: '2px solid transparent', 
+          color: 'transparent'
+          }}></Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
@@ -119,55 +128,62 @@ const CustomDialog = () => {
 };
 const Custom = () => {
   return (
-    <section className='py-12 xl:py-24 h-[84vh] xl:pt-28 bg-hero bg-no-repeat bg-bottom bg-cover dark:bg-none'>
-      <div className='container mx-auto'>
-        <div className='flex justify-between gap-x-8'>
-          <div>
-            <div className='text-sm uppercase font-semibold mb-4 text-primary tracking-[4px]'>
-              Web Service
-            </div>
-            <h1 className="section-title mb-8 xl:mb-16 text-center mx-auto">
-              자소서 기반 면접 Service
-            </h1>
+    // <section className='py-12 xl:py-24 h-[84vh] xl:pt-28 bg-hero bg-no-repeat bg-bottom bg-cover dark:bg-none'>
+    //   <div className='container mx-auto'>
+    //     <div className='flex justify-between gap-x-8'>
+    //       <div>
+    //         <div className='text-sm uppercase font-semibold mb-4 text-primary tracking-[4px]'>
+    //           Web Service
+    //         </div>
+    //         <h1 className="section-title mb-8 xl:mb-16 text-center mx-auto">
+    //           자소서 기반 면접 Service
+    //         </h1>
 
-            <p className='subtitle max-w-[490px] mx-auto xl:mx-0'>
-            "아래 스타트 버튼을 눌러서 시작하세요!"
+    //         <p className='subtitle max-w-[490px] mx-auto xl:mx-0'>
+    //         "아래 스타트 버튼을 눌러서 시작하세요!"
             
-            </p>
-            <div>
-              <CustomDialog />
-            </div>
-          </div>
-          <div className='hidden xl:flex relative'>
-            <Badge 
-              containerStyles='absolute top-[24%] -left-[5rem]'
-              icon={<RiBriefcase4Fill />}
-              endCountNum={3}
-              badgeText={'Best Service'}
-            />
-            <Badge 
-              containerStyles='absolute top-[80%] -left-[1rem]'
-              icon={<RiTodoFill />}
-              endCountNum={6}
-              endCountText='k'
-              badgeText={'Like Number'}
-            />
-            <Badge 
-              containerStyles='absolute top-[55%] -right-8'
-              icon={<RiTeamFill />}
-              endCountNum={9}
-              endCountText='k'
-              badgeText={'Happy Clients'}
-            />
+    //         </p>
+    //         <div>
+    //           <CustomDialog />
+    //         </div>
+    //       </div>
+    //       <div className='hidden xl:flex relative'>
+    //         <Badge 
+    //           containerStyles='absolute top-[24%] -left-[5rem]'
+    //           icon={<RiBriefcase4Fill />}
+    //           endCountNum={3}
+    //           badgeText={'Best Service'}
+    //         />
+    //         <Badge 
+    //           containerStyles='absolute top-[80%] -left-[1rem]'
+    //           icon={<RiTodoFill />}
+    //           endCountNum={6}
+    //           endCountText='k'
+    //           badgeText={'Like Number'}
+    //         />
+    //         <Badge 
+    //           containerStyles='absolute top-[55%] -right-8'
+    //           icon={<RiTeamFill />}
+    //           endCountNum={9}
+    //           endCountText='k'
+    //           badgeText={'Happy Clients'}
+    //         />
 
-            <div className='bg-hero_shape2_dark dark:bg-hero_shape2_light w-[500px] h-[500px] bg-no-repeat absolute -top-1 -right-2 bg-opacity-50'></div>
-            <DevImg 
-              containerStyles=' w-[700px] h-[450px] bg-no-repeat relative bg-bottom'
-              imgSrc='/custom/custom.png'/>
-          </div>
-        </div>
-      </div>
-    </section>
+    //         <div className='bg-hero_shape2_dark dark:bg-hero_shape2_light w-[500px] h-[500px] bg-no-repeat absolute -top-1 -right-2 bg-opacity-50'></div>
+    //         <DevImg 
+    //           containerStyles=' w-[700px] h-[450px] bg-no-repeat relative bg-bottom'
+    //           imgSrc='/custom/custom.png'/>
+    //       </div>
+    //     </div>
+    //   </div>
+    // </section>
+  //   <div className="flex justify-center items-center overflow-hidden h-[95vh]">
+  //   <video src="/mp4/custom.mp4" height="90vh" autoPlay muted loop />
+  // </div>
+  <div className="relative flex justify-center items-center overflow-hidden h-[95vh]">
+  <VideoComponent />
+  <CustomDialog />
+</div>
   );
 };
 

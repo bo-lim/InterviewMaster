@@ -4,7 +4,7 @@ import DevImg from "../../components/Devlmg";
 import { Cookies } from "react-cookie";
 import { Button } from "../../components/ui/button";
 import axios from "axios";
-import { getUserList } from "../api";
+
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
 // import ProjectCard from '@/components/ProjectCard';
@@ -21,11 +21,10 @@ import {
 } from "../../components/ui/card"
 import { BUILD_ID_FILE } from "next/dist/shared/lib/constants";
 
-import emblaCarouselAutoplay from "embla-carousel-autoplay";
 export async function getUserList(user_id) {
 
   try {
-    const response = await axios.get(`http://192.168.0.66:8000/get_user/${user_id}`);
+    const response = await axios.get(`http://192.168.0.15:30803/dbr/get_user/${user_id}`);
     console.log("mypage list", response)
     return response.data;
   } catch (error) {
@@ -33,19 +32,11 @@ export async function getUserList(user_id) {
   }
 }
 
-// export async function getUserList(user_id) {
-
-//   try {
-//     const response = await axios.get(`${process.env.NEXT_PUBLIC_GET_API}/get_user/${user_id}`);
-//     console.log("mypage list", response)
-//     return response.data;
-//   } catch (error) {
-//     throw new Error("Failed to fetch data: " + error.message);
-//   }
-// }
 
 const Mypage = () => {
   const cookies = new Cookies();
+  const router = useRouter();  // useRouter 훅 초기화
+
 
   // const [categories, setCategories] = useState(uniqueCategories);
   // const [category, setCategory] = useState('all projects');
@@ -69,11 +60,12 @@ const Mypage = () => {
   const handleLogout = async () => {
     try {
       const accessToken = cookies.get('access_token'); // Assuming your access token key is 'access_token'
-      const response = await axios.post('http://192.168.0.66:8002/act/kakao/logout', { access_token: accessToken });
+      const response = await axios.post('http://192.168.0.15:30803/dbr/act/kakao/logout', { access_token: accessToken });
       if (response.data.logout === 'success') {
         cookies.remove('access_token'); // Remove access token from cookies
+        cookies.remove('user_id'); // Remove user_id from cookies
         console.log("Logged out successfully");
-        router.push('/'); // Redirect to home page or any other page after logout
+        router.push('/login'); // Redirect to login page after logout
       } else {
         console.error("Logout failed:", response.data); // Log if logout is not successful
       }

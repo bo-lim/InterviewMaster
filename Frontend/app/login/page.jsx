@@ -14,7 +14,7 @@ const Login = () => {
   };
 
   const handleButtonClick = async (event) => {
-    // window.location.href = "http://192.168.0.66:8002/act/kakao";
+     window.location.href = "http://192.168.0.15:30803/dbr/act/kakao";
 
   //  cookies.set('user_id',"ygang4546@gmail.com");
      // 임시 로그인
