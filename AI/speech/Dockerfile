@@ -8,4 +8,4 @@ RUN export OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true
 
 EXPOSE 8000
 # CMD ["opentelemetry-instrument","--traces_exporter","console","--metrics_exporter","console","--logs_exporter","opentelemetry-collector.istio-system.svc.cluster.local:4317","uvicorn","speech:app", "--host", "0.0.0.0", "--port", "8000"]
-CMD ["opentelemetry-instrument","--logs_exporter","http://opentelemetry-collector.istio-system.svc.cluster.local:4317/v1/traces","uvicorn","speech:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["opentelemetry-instrument","uvicorn","speech:app", "--host", "0.0.0.0", "--port", "8000"]
