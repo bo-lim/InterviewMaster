@@ -7,4 +7,5 @@ RUN opentelemetry-bootstrap -a install
 RUN export OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true
 
 EXPOSE 8000
-CMD ["opentelemetry-instrument","--traces_exporter","console","--metrics_exporter","console","--logs_exporter","opentelemetry-collector.istio-system.svc.cluster.local:4317","","uvicorn","speech:app", "--host", "0.0.0.0", "--port", "8000"]
+# CMD ["opentelemetry-instrument","--traces_exporter","console","--metrics_exporter","console","--logs_exporter","opentelemetry-collector.istio-system.svc.cluster.local:4317","uvicorn","speech:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["opentelemetry-instrument","--service_name","itm.bce.txt","uvicorn","speech:app", "--host", "0.0.0.0", "--port", "8000"]
