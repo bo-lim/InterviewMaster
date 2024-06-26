@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ReloadIcon } from "@radix-ui/react-icons"
 import { create_polly, post_chat, post_new_qs, post_stt, save_audio, save_video } from "../api";
 import { Camera } from "lucide-react";
-
+// import useBlockPageNavigation from "@/hooks/useRouteChangeBlocking";
 
 const Interview = () => {
   const cookies = new Cookies();
@@ -22,6 +22,7 @@ const Interview = () => {
   const [count, setCount] = useState(1);
   const [disabled, setDisabled] = useState(true);
   const [countdown, setCountdown] = useState(null);
+  // const { isModalOpen, confirmNavigation, cancelNavigation, routePath } = useBlockPageNavigation();
 
 
   const [loadingMessage, setLoadingMessage] = useState(null); // 로딩 메시지 상태 추가
@@ -231,7 +232,15 @@ const Interview = () => {
           <p className="text-lg">{frontQ}</p>
         </div>
       </div>
-       
+      {/* <div>
+      {isModalOpen && (
+        <div>
+          <p>Are you sure you want to navigate to {routePath}?</p>
+          <button onClick={confirmNavigation}>Yes</button>
+          <button onClick={cancelNavigation}>No</button>
+        </div>
+      )}
+    </div> */}
       
       <div className="relative">
         <div className="text-center text-white rounded-lg overflow-hidden shadow-xl aspect-w-16 aspect-h-9 max-w-5xl mx-auto">
