@@ -16,6 +16,7 @@ import os, uuid, requests
 
 app = FastAPI()
 
+
 # .env파일 읽기
 load_dotenv()
 

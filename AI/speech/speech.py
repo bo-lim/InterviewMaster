@@ -13,11 +13,15 @@ from datetime import datetime
 from dotenv import load_dotenv
 import torch
 from transformers import PreTrainedTokenizerFast, BartForConditionalGeneration
-
+from opentelemetry import trace
+from opentelemetry.sdk.trace import TracerProvider
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
+provider = TracerProvider()
+trace.set_tracer_provider(provider)
+tracer = trace.get_tracer(__name__)
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -62,7 +66,6 @@ class TextItem(BaseModel):
 
 @app.post("/speech/stt", status_code=200)
 async def stt(item: SttItem):
-    # file_path = item.file_path.split(bucket)[1][1:]
     print(item.file_path)
     print(item.itv_no)
     print(item.question_no)
@@ -83,6 +86,8 @@ async def stt(item: SttItem):
     os.remove(local_file_path)
     original_file_name = 'text/' + item.itv_no + '_' + str(item.question_no) + '.txt'
     print(original_file_name, transcript)
+    with tracer.start_as_current_span("text_file") as dataspan:
+        dataspan.set_attribute("text_file.value", original_file_name)
     
     s3.put_object(
         Body = transcript,

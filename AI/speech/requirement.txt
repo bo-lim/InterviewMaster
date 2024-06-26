@@ -3,3 +3,4 @@ transformers
 boto3
 openai
 python-dotenv
+opentelemetry-distro==0.46b0
