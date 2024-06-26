@@ -16,14 +16,14 @@ from transformers import PreTrainedTokenizerFast, BartForConditionalGeneration
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+# from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry import metrics
-from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+# from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 import logging
-
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -35,7 +35,7 @@ resource = Resource(attributes={
 traceProvider = TracerProvider(resource=resource)
 tracer = trace.get_tracer(__name__)
 
-processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://opentelemetry-collector.istio-system.svc.cluster.local:4317", insecure=True))
+processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://opentelemetry-collector.istio-system.svc.cluster.local:4317/v1/traces", insecure=True))
 traceProvider.add_span_processor(processor)
 trace.set_tracer_provider(traceProvider)
 
