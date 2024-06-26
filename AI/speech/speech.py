@@ -35,7 +35,7 @@ resource = Resource(attributes={
 traceProvider = TracerProvider(resource=resource)
 tracer = trace.get_tracer(__name__)
 
-processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://opentelemetry-collector.istio-system.svc.cluster.local:4317/v1/traces", insecure=True))
+processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://opentelemetry-collector.istio-system.svc.cluster.local:4317/v1/traces"))
 traceProvider.add_span_processor(processor)
 trace.set_tracer_provider(traceProvider)
 
