@@ -6,4 +6,4 @@ python-dotenv
 opentelemetry-distro==0.46b0
 opentelemetry-exporter-otlp-proto-grpc
 opentelemetry-instrumentation-fastapi
-opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-exporter-otlp-proto-http
