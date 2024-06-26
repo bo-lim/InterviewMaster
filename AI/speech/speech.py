@@ -39,7 +39,7 @@ processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://opentelemetry-c
 traceProvider.add_span_processor(processor)
 trace.set_tracer_provider(traceProvider)
 
-trace.get_tracer_provider().add_span_processor(processor)
+# trace.get_tracer_provider().add_span_processor(processor)
 # reader = PeriodicExportingMetricReader(
 #     OTLPMetricExporter(endpoint="http://opentelemetry-collector.istio-system.svc.cluster.local:4317")
 # )
@@ -112,8 +112,8 @@ async def stt(item: SttItem):
     original_file_name = 'text/' + item.itv_no + '_' + str(item.question_no) + '.txt'
     print(original_file_name, transcript)
     logger.info(f'stt file path : {original_file_name}')
-    with tracer.start_as_current_span("foo"):
-        print("Hello world!")
+    # with tracer.start_as_current_span("foo"):
+    #     print("Hello world!")
     
     s3.put_object(
         Body = transcript,
