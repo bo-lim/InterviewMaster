@@ -29,11 +29,14 @@ app.add_middleware(
 )
 
 # MongoDB 연결 설정(쓰기속도 특화)
-#connection_string = "mongodb://192.168.56.100:32017/?replicaSet=rs0&directConnection=true"
-connection_string = os.getenv("DB_WRITE_LOC_URI")
+if os.getenv("env") == "k8s":
+    connection_string = os.getenv("DB_WRITE_K8S_URI")
+else:
+    connection_string = os.getenv("DB_WRITE_LOC_URI")
 client = MongoClient(connection_string)
 db = client["im"]
 collection = db["InterviewMaster"]
+
 
 
 ###########################

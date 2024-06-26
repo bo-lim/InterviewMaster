@@ -16,25 +16,27 @@ import os, uuid, requests
 
 app = FastAPI()
 
-
 # .env파일 읽기
 load_dotenv()
 
 # COSRS옵션 부여
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"], # 어느곳에서 접근을 허용할 것이냐
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"], # 어떤 메서드에 대해서 허용할 것이냐("GET", "POST")
+    allow_headers=["*"], 
 )
 
 # MongoDB 연결 설정(읽기속도 특화)
-#connection_string = "mongodb://192.168.56.100:32018/?replicaSet=rs0&directConnection=true"
-connection_string = os.getenv("DB_READ_LOC_URI")
+if os.getenv("env") == "k8s":
+    connection_string = os.getenv("DB_READ_K8S_URI")
+else:
+    connection_string = os.getenv("DB_READ_LOC_URI")
 client = MongoClient(connection_string)
 db = client["im"]
 collection = db["InterviewMaster"]
+
 
 
 ##########################
@@ -59,16 +61,20 @@ async def get_uuid():
         "UUID hex값": unique_id.hex
     }
 
+
+
 ###########################
 ########## OAuth ##########
 ###########################
 # kakao Login
-# http://192.168.0.66:8002/act/kakao
 # 호출시 auth로 redirect해서 인증 진행
 @app.get("/dbr/act/kakao")
 def kakao():
     kakao_client_key = os.getenv("KAKAO_CLIENT_KEY")
-    kakao_url = os.getenv("KAKAO_REDIRECT_K8S_URI")
+    if os.getenv("env") == "k8s":
+        kakao_url = os.getenv("KAKAO_REDIRECT_K8S_URI")
+    else:
+        kakao_url = os.getenv("KAKAO_REDIRECT_LOC_URI")
     kakao_scope = os.getenv("KAKAO_SCOPE")
     
     url = f"https://kauth.kakao.com/oauth/authorize?client_id={kakao_client_key}&redirect_uri={kakao_url}&response_type=code&scope={kakao_scope}"
@@ -94,7 +100,10 @@ def kakao():
 async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
     kakao_client_key = os.getenv("KAKAO_CLIENT_KEY")
     kakao_secret_key = os.getenv("KAKAO_SECRET_KEY")
-    kakao_url = os.getenv("KAKAO_REDIRECT_K8S_URI")
+    if os.getenv("env") == "k8s":
+        kakao_url = os.getenv("KAKAO_REDIRECT_K8S_URI")
+    else:
+        kakao_url = os.getenv("KAKAO_REDIRECT_LOC_URI")
     
     url = f'https://kauth.kakao.com/oauth/token?grant_type=authorization_code&client_id={kakao_client_key}&redirect_uri={kakao_url}&code={code}&client_secret={kakao_secret_key}'
     
@@ -137,7 +146,6 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
 
 
 # kakao 로그아웃
-# http://192.168.0.66:8002/act/kakao/logout
 # access_token받아야 로그아웃 처리 가능
 class ItemToken(BaseModel):
     access_token: str
@@ -165,7 +173,6 @@ def kakaoLogout(item: ItemToken, response: Response):
 
 
 # kakao 로그아웃(강제)
-# http://192.168.0.66:8002/act/kakao/kill
 # access_token받아야 로그아웃 처리 가능
 @app.get("/dbr/act/kakao/kill/{token}")
 def kakaokill(token: str, response: Response):

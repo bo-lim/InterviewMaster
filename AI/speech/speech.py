@@ -15,13 +15,36 @@ import torch
 from transformers import PreTrainedTokenizerFast, BartForConditionalGeneration
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+# from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry import metrics
+# from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
+import logging
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-provider = TracerProvider()
-trace.set_tracer_provider(provider)
+resource = Resource(attributes={
+    SERVICE_NAME: "itm-bce-txt"
+})
+traceProvider = TracerProvider(resource=resource)
 tracer = trace.get_tracer(__name__)
+
+processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://opentelemetry-collector.istio-system.svc.cluster.local:4317/v1/traces"))
+traceProvider.add_span_processor(processor)
+trace.set_tracer_provider(traceProvider)
+
+# trace.get_tracer_provider().add_span_processor(processor)
+# reader = PeriodicExportingMetricReader(
+#     OTLPMetricExporter(endpoint="http://opentelemetry-collector.istio-system.svc.cluster.local:4317")
+# )
+# meterProvider = MeterProvider(resource=resource, metric_readers=[reader])
+# metrics.set_meter_provider(meterProvider)
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -30,6 +53,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 bucket = 'simulation-userdata'
 session = Session(
     aws_access_key_id=os.environ["aws_access_key_id"],
@@ -86,8 +111,9 @@ async def stt(item: SttItem):
     os.remove(local_file_path)
     original_file_name = 'text/' + item.itv_no + '_' + str(item.question_no) + '.txt'
     print(original_file_name, transcript)
-    with tracer.start_as_current_span("text_file") as dataspan:
-        dataspan.set_attribute("text_file.value", original_file_name)
+    logger.info(f'stt file path : {original_file_name}')
+    # with tracer.start_as_current_span("foo"):
+    #     print("Hello world!")
     
     s3.put_object(
         Body = transcript,
