@@ -1,7 +1,7 @@
 'use client';
 import DevImg from '../../components/Devlmg';
 import Badge from "../../components/Badge";
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import VideoComponent from '../../components/videocomponent';
 import { useRouter } from 'next/navigation'; // next/navigation에서 useRouter를 가져옴
 import { Button } from "../../components/ui/button";
@@ -29,7 +29,12 @@ const CustomDialog = () => {
   const [file, setFile] = useState(null);
   const router = useRouter();
 
-
+  useEffect(() => {
+    // 로그인 여부 확인
+    if (!user_id) {
+      router.push('/login'); // 로그인 되어 있지 않으면 로그인 페이지로 리다이렉트
+    }
+  }, []); // 빈 배열을 전달하여 컴포넌트가 마운트될 때 한 번만 실행되도록 설정
   const handleNext = () => {
     setStep(step + 1);
   };

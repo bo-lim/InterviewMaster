@@ -64,7 +64,8 @@ const Interview = () => {
     audio_formData.append('audio_key',audio_key)
     audio_formData.append('blob',blob)
     await save_audio(audio_formData)
-    fetchSTT();
+    await fetchSTT();
+ 
   };
   const polly = async (text) => {
     const arrayBuffer = await create_polly(text);
@@ -201,20 +202,30 @@ const Interview = () => {
         if (chat_response.stop === 1) {
           router.push('/report')
         }
-        console.log('다음 질문');
+        else{
+          console.log('다음 질문');
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          console.log("next 전");
+          console.log(chatQ);
+          setFrontQ(chat_response.response);
+          polly(chat_response.response);
+          console.log("next 후");
+        }
+        
        
       } catch (error) {
         console.log(error);
     }
     // 로딩 메시지 해제 및 startNext 호출
       setLoadingMessage(null);
-      //startNext();
+      
+
   };
 
-  const clickNextButton = () => {
+  const clickNextButton = useCallback(() => {
     setFrontQ(chatQ);
     polly(chatQ);
-  }
+  }, [chatQ]);
 
   useEffect(() => {
   if (start == 0) {
@@ -307,9 +318,9 @@ const Interview = () => {
 
           </div>
         ))}
-        <button onClick={clickNextButton} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+        {/* <button onClick={clickNextButton} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
               NEXT
-            </button>
+            </button> */}
       </div>
 
     </div>

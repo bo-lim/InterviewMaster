@@ -44,18 +44,25 @@ const Mypage = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const checkLoginStatus = async () => {
+      const user_id = cookies.get('user_id');
+      if (!user_id) {
+        router.push('/login'); // 로그인 되어 있지 않으면 로그인 페이지로 리다이렉트
+        return;
+      }
+
       try {
-        console.log(cookies.get('user_id'));
-        const data = await getUserList(cookies.get('user_id')); // 실제 user_id를 여기에 삽입
-        setUserData(data.user_info); //userDsts = data.user_info
+        const data = await getUserList(user_id);
+        setUserData(data.user_info);
 
       } catch (error) {
         setError("Failed to fetch user data: " + error.message);
       }
     };
-    fetchData();
+
+    checkLoginStatus();
   }, []);
+  
 
   const handleLogout = async () => {
     try {
