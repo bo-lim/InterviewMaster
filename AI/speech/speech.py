@@ -13,38 +13,118 @@ from datetime import datetime
 from dotenv import load_dotenv
 import torch
 from transformers import PreTrainedTokenizerFast, BartForConditionalGeneration
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-# from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry import metrics
-# from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 import logging
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry import trace
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor, BatchSpanProcessor, ConsoleSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler 
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor, SimpleLogRecordProcessor, ConsoleLogExporter
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry._logs import (
+    SeverityNumber,
+    get_logger,
+    get_logger_provider,
+    std_to_otel,
+    set_logger_provider
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-resource = Resource(attributes={
-    SERVICE_NAME: "itm-bce-txt"
-})
-traceProvider = TracerProvider(resource=resource)
-tracer = trace.get_tracer(__name__)
+# resource = Resource(attributes={
+#     SERVICE_NAME: "itm-bce-txt"
+# })
+# traceProvider = TracerProvider(resource=Resource.create({}))
+# trace.set_tracer_provider(traceProvider)
+# otlp_span_exporter = OTLPSpanExporter(endpoint="http://opentelemetry-collector.istio-system.svc.cluster.local:4317/v1/traces")
+# trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(otlp_span_exporter))
 
-processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://opentelemetry-collector.istio-system.svc.cluster.local:4317/v1/traces"))
-traceProvider.add_span_processor(processor)
-trace.set_tracer_provider(traceProvider)
 
-# trace.get_tracer_provider().add_span_processor(processor)
-# reader = PeriodicExportingMetricReader(
-#     OTLPMetricExporter(endpoint="http://opentelemetry-collector.istio-system.svc.cluster.local:4317")
-# )
-# meterProvider = MeterProvider(resource=resource, metric_readers=[reader])
-# metrics.set_meter_provider(meterProvider)
+class FormattedLoggingHandler(LoggingHandler):
+    def emit(self, record: logging.LogRecord) -> None:
+        msg = self.format(record)
+        record.msg = msg
+        record.args = None
+        self._logger.emit(self._translate(record))
+
+def otel_get_env_vars():
+    otel_http_headers = {}
+    try:
+        decoded_http_headers = os.getenv("OTEL_ENDPOINT_HTTP_HEADERS", "")
+        key_values = decoded_http_headers.split(",")
+        for key_value in key_values:
+            key, value = key_value.split("=")
+            otel_http_headers[key] = value
+    except Exception as e:
+        print(f"Error parsing OTEL_ENDPOINT_HTTP_HEADERS: {str(e)}")
+    otel_endpoint_url = os.getenv("OTEL_ENDPOINT_URL", None)
+    
+    return otel_endpoint_url, otel_http_headers
+
+def otel_logging_init():
+    # ------------Logging
+    # Set logging level
+    # CRITICAL = 50
+    # ERROR = 40
+    # WARNING = 30
+    # INFO = 20
+    # DEBUG = 10
+    # NOTSET = 0
+    # default = WARNING
+    log_level = str(os.getenv("OTEL_PYTHON_LOG_LEVEL", "INFO")).upper()
+    if (log_level == "CRITICAL"):
+        log_level = logging.CRITICAL
+        print(f"Using log level: CRITICAL / {log_level}")
+    elif (log_level == "ERROR"):
+        log_level = logging.ERROR
+        print(f"Using log level: ERROR / {log_level}")
+    elif (log_level == "WARNING"):
+        log_level = logging.WARNING
+        print(f"Using log level: WARNING / {log_level}")
+    elif (log_level == "INFO"):
+        log_level = logging.INFO
+        print(f"Using log level: INFO / {log_level}")
+    elif (log_level == "DEBUG"):
+        log_level = logging.DEBUG
+        print(f"Using log level: DEBUG / {log_level}")
+    elif (log_level == "NOTSET"):
+        log_level = logging.INFO
+        print(f"Using log level: NOTSET / {log_level}")
+
+    # ------------ Opentelemetry loging initialization
+
+    logger_provider = LoggerProvider(
+        resource=Resource.create({})
+    )
+    set_logger_provider(logger_provider)
+    otel_endpoint_url, otel_http_headers = otel_get_env_vars()
+    otlp_log_exporter = OTLPLogExporter(endpoint=otel_endpoint_url,headers=otel_http_headers)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
+
+    otel_log_handler = FormattedLoggingHandler(logger_provider=logger_provider)
+
+    # This has to be called first before logger.getLogger().addHandler() so that it can call logging.basicConfig first to set the logging format
+    # based on the environment variable OTEL_PYTHON_LOG_FORMAT
+    LoggingInstrumentor().instrument()
+    logFormatter = logging.Formatter(os.getenv("OTEL_PYTHON_LOG_FORMAT", None))
+    otel_log_handler.setFormatter(logFormatter)
+    logging.getLogger().addHandler(otel_log_handler)
+
+def otel_trace_init():
+    trace.set_tracer_provider(
+       TracerProvider(
+           resource=Resource.create({}),
+       ),
+    )
+    otel_endpoint_url, otel_http_headers = otel_get_env_vars()
+    otlp_span_exporter = OTLPSpanExporter(endpoint=otel_endpoint_url,headers=otel_http_headers)
+    trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(otlp_span_exporter))
+
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -91,6 +171,15 @@ class TextItem(BaseModel):
 
 @app.post("/speech/stt", status_code=200)
 async def stt(item: SttItem):
+    current_span = trace.get_current_span()
+    if (current_span is not None) and (current_span.is_recording()):
+        current_span.set_attributes(
+            {
+                "http.status_text": item.file_path,
+                "otel.status_description": f"{item.itv_no} / {item.question_no}",
+                "otel.status_code": "ERROR"
+            }
+        )
     print(item.file_path)
     print(item.itv_no)
     print(item.question_no)
@@ -121,7 +210,7 @@ async def stt(item: SttItem):
         Key = original_file_name
     )
     return {"s3_file_path":'s3://'+bucket+'/'+original_file_name}
-
+FastAPIInstrumentor.instrument_app(app)
 # @app.post("/speech/tts", status_code=201)
 # async def tts(item: Item):
 #     text = item.text
