@@ -135,6 +135,11 @@ app.add_middleware(
 )
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+DEBUG_LOG_OTEL_TO_CONSOLE = os.getenv("DEBUG_LOG_OTEL_TO_CONSOLE", 'False').lower() == 'true'
+DEBUG_LOG_OTEL_TO_PROVIDER = os.getenv("DEBUG_LOG_OTEL_TO_PROVIDER", 'False').lower() == 'true'
+otel_trace_init()
+otel_logging_init()
+
 bucket = 'simulation-userdata'
 session = Session(
     aws_access_key_id=os.environ["aws_access_key_id"],
