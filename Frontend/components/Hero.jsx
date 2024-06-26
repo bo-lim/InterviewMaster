@@ -63,7 +63,7 @@ const Hero = () => {
     // </section>
 
     <div className="flex justify-center items-center overflow-hidden h-[95vh]">
-  <video src="/mp4/interview.mp4" height="90vh" autoPlay muted loop />
+  <video src="/mp4/Interview.mp4" height="90vh" autoPlay muted loop />
 </div>
 
   );
