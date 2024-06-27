@@ -115,8 +115,8 @@ session = Session(
 polly = session.client("polly")
 s3 = session.client("s3")
 
-tokenizer = PreTrainedTokenizerFast.from_pretrained('bo-lim/IM-text-model')
-model = BartForConditionalGeneration.from_pretrained('bo-lim/IM-text-model')
+# tokenizer = PreTrainedTokenizerFast.from_pretrained('bo-lim/IM-text-model')
+# model = BartForConditionalGeneration.from_pretrained('bo-lim/IM-text-model')
 
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
