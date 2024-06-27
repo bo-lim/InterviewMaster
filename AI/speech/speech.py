@@ -128,7 +128,7 @@ async def stt(item: SttItem):
             response_format="text"
         )
     os.remove(local_file_path)
-    original_file_name = f'{item.user_uuid}/{item.itv_cnt}/text.txt'
+    original_file_name = f'{item.user_uuid}/{item.itv_cnt}/stt.txt'
     end_time = datetime.now()
     elapsed_time = end_time - start_time
     logger.info(f'STT SEC:{elapsed_time.total_seconds()}')
