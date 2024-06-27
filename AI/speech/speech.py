@@ -11,7 +11,6 @@ from pydantic import BaseModel
 from openai import OpenAI
 from datetime import datetime
 from dotenv import load_dotenv
-import torch
 from transformers import PreTrainedTokenizerFast, BartForConditionalGeneration
 import logging
 from opentelemetry import trace

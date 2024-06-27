@@ -2,7 +2,7 @@ FROM python:3.10
 COPY . /src
 WORKDIR /src
 RUN apt-get update -y && apt-get install -y xdg-utils
-RUN pip install --upgrade pip && pip install -r requirement.txt && pip install torch==2.3.0 --index-url https://download.pytorch.org/whl/cpu
+RUN pip install --upgrade pip && pip install -r requirement.txt
 RUN opentelemetry-bootstrap -a install
 RUN export OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true
 
