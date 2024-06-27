@@ -134,7 +134,7 @@ async def get_uuid():
 # 호출시 auth로 redirect해서 인증 진행
 @app.get("/dbr/act/kakao")
 def kakao():
-    logger.info('사용자 로그인')
+    logger.info('LOGIN')
     kakao_client_key = os.getenv("KAKAO_CLIENT_KEY")
     if os.getenv("env") == "k8s":
         kakao_url = os.getenv("KAKAO_REDIRECT_K8S_URI")
@@ -219,7 +219,7 @@ class ItemToken(BaseModel):
 
 @app.post("/dbr/act/kakao/logout")
 def kakaoLogout(item: ItemToken, response: Response):
-    logger.info('사용자 로그아웃')
+    logger.info('LOGOUT')
     try:
         access_token = item.access_token
 
@@ -244,6 +244,7 @@ def kakaoLogout(item: ItemToken, response: Response):
 # access_token받아야 로그아웃 처리 가능
 @app.get("/dbr/act/kakao/kill/{token}")
 def kakaokill(token: str, response: Response):
+    logger.info('LOGOUT')
     try:
         # 액세스 토큰(강제 kill)
         access_token = token
@@ -336,6 +337,7 @@ async def get_itv(user_id: str):
 # 출력값 user_id, user_history, itv_info
 @app.get("/dbr/get_itv/{user_id}/{itv_no}")
 async def get_itv_detail(user_id: str, itv_no: str):
+    logger.info('REPORT 정보 조회')
 
     itv = collection.find_one({"_id": user_id}, {"_id": 0, f"itv_info.{itv_no}": 1})
     print("*****itv_list*****\n", itv)

@@ -131,7 +131,7 @@ async def stt(item: SttItem):
     original_file_name = f'{item.user_uuid}/{item.itv_cnt}/text.txt'
     end_time = datetime.now()
     elapsed_time = end_time - start_time
-    logger.info(f'STT:{elapsed_time.total_seconds()}')
+    logger.info(f'STT SEC:{elapsed_time.total_seconds()}')
     
     s3.put_object(
         Body = transcript,
