@@ -6,45 +6,68 @@ from contextlib import closing
 import os
 import sys
 import subprocess
+from datetime import datetime
 from tempfile import gettempdir
 from pydantic import BaseModel
 from openai import OpenAI
 from datetime import datetime
 from dotenv import load_dotenv
-import torch
 from transformers import PreTrainedTokenizerFast, BartForConditionalGeneration
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-# from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry import metrics
-# from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExporter
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 import logging
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry import trace
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler 
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry._logs import (
+    SeverityNumber,
+    get_logger,
+    get_logger_provider,
+    std_to_otel,
+    set_logger_provider
+)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
+otel_endpoint_url = os.getenv("OTEL_ENDPOINT_URL", 'http://opentelemetry-collector.istio-system.svc.cluster.local:4317')
 
-resource = Resource(attributes={
-    SERVICE_NAME: "itm-bce-txt"
-})
-traceProvider = TracerProvider(resource=resource)
-tracer = trace.get_tracer(__name__)
+class FormattedLoggingHandler(LoggingHandler):
+    def emit(self, record: logging.LogRecord) -> None:
+        msg = self.format(record)
+        record.msg = msg
+        record.args = None
+        self._logger.emit(self._translate(record))
 
-processor = BatchSpanProcessor(OTLPSpanExporter(endpoint="http://opentelemetry-collector.istio-system.svc.cluster.local:4317/v1/traces"))
-traceProvider.add_span_processor(processor)
-trace.set_tracer_provider(traceProvider)
+def otel_logging_init():
+    # ------------Logging
+    # Set logging level
+    # CRITICAL = 50
+    # ERROR = 40
+    # WARNING = 30
+    # INFO = 20
+    # DEBUG = 10
+    # NOTSET = 0
+    # default = WARNING
+    
+    # ------------ Opentelemetry loging initialization
+    logger_provider = LoggerProvider(
+        resource=Resource.create({})
+    )
+    set_logger_provider(logger_provider)
+    otlp_log_exporter = OTLPLogExporter(endpoint=otel_endpoint_url)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
+    otel_log_handler = FormattedLoggingHandler(logger_provider=logger_provider)
+    LoggingInstrumentor().instrument()
+    logFormatter = logging.Formatter(os.getenv("OTEL_PYTHON_LOG_FORMAT", None))
+    otel_log_handler.setFormatter(logFormatter)
+    logging.getLogger().addHandler(otel_log_handler)
 
-# trace.get_tracer_provider().add_span_processor(processor)
-# reader = PeriodicExportingMetricReader(
-#     OTLPMetricExporter(endpoint="http://opentelemetry-collector.istio-system.svc.cluster.local:4317")
-# )
-# meterProvider = MeterProvider(resource=resource, metric_readers=[reader])
-# metrics.set_meter_provider(meterProvider)
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -55,47 +78,32 @@ app.add_middleware(
 )
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-bucket = 'simulation-userdata'
+otel_logging_init()
+
+bucket = os.environ["bucket"]
 session = Session(
-    aws_access_key_id=os.environ["aws_access_key_id"],
-    aws_secret_access_key=os.environ["aws_secret_access_key"],
+    aws_access_key_id=os.getenv("aws_access_key_id",None),
+    aws_secret_access_key=os.getenv("aws_secret_access_key",None),
     region_name="ap-northeast-2")
 polly = session.client("polly")
 s3 = session.client("s3")
-
-tokenizer = PreTrainedTokenizerFast.from_pretrained('bo-lim/IM-text-model')
-model = BartForConditionalGeneration.from_pretrained('bo-lim/IM-text-model')
-
-client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY",None))
 
 class Item(BaseModel):
     user_id: str
     text: str
 class SttItem(BaseModel):
-    itv_no: str
+    user_uuid: str
+    itv_cnt: str
     file_path: str
-    question_no: int
 class TextItem(BaseModel):
     text: str
 
-# @app.post("/analyze/summarize")
-# async def summarize(item: TextItem):
-#     text = item.text.replace('\n', ' ')
-#     raw_input_ids = tokenizer.encode(text)
-#     input_ids = [tokenizer.bos_token_id] + raw_input_ids + [tokenizer.eos_token_id]
-
-#     # 요약 생성
-#     summary_ids = model.generate(torch.tensor([input_ids]), num_beams=4, max_length=512, eos_token_id=1)
-#     summary = tokenizer.decode(summary_ids.squeeze().tolist(), skip_special_tokens=True)
-#     return {"result":summary}
-
 @app.post("/speech/stt", status_code=200)
 async def stt(item: SttItem):
-    print(item.file_path)
-    print(item.itv_no)
-    print(item.question_no)
-    file_path = item.file_path
-    local_file_path = item.itv_no+".mp3"
+    start_time = datetime.now()
+    file_path = item.file_path.replace('s3://'+bucket+'/','')
+    local_file_path = item.user_uuid+item.itv_cnt+".mp3"
     s3.download_file( 
         bucket,
         file_path,
@@ -109,11 +117,10 @@ async def stt(item: SttItem):
             response_format="text"
         )
     os.remove(local_file_path)
-    original_file_name = 'text/' + item.itv_no + '_' + str(item.question_no) + '.txt'
-    print(original_file_name, transcript)
-    logger.info(f'stt file path : {original_file_name}')
-    # with tracer.start_as_current_span("foo"):
-    #     print("Hello world!")
+    original_file_name = f'{item.user_uuid}/{item.itv_cnt}/stt.txt'
+    end_time = datetime.now()
+    elapsed_time = end_time - start_time
+    logger.info(f'STT SEC:{elapsed_time.total_seconds()}')
     
     s3.put_object(
         Body = transcript,
@@ -121,38 +128,4 @@ async def stt(item: SttItem):
         Key = original_file_name
     )
     return {"s3_file_path":'s3://'+bucket+'/'+original_file_name}
-
-# @app.post("/speech/tts", status_code=201)
-# async def tts(item: Item):
-#     text = item.text
-#     try:
-#         # Request speech synthesis
-#         response = polly.synthesize_speech(Text=text, OutputFormat="mp3",
-#                                             VoiceId="Seoyeon")
-#     except (BotoCoreError, ClientError) as error:
-#         # The service returned an error, exit gracefully
-#         print(error)
-#         sys.exit(-1)
-
-#     if "AudioStream" in response:
-#         with closing(response["AudioStream"]) as stream:
-#             output = os.path.join(gettempdir(), item.user_id+".mp3")
-#             try:
-#                 with open(output, "wb") as file:
-#                     file.write(stream.read())
-#             except IOError as error:
-#                 print(error)
-#                 sys.exit(-1)
-#     else:
-#         print("Could not stream audio")
-#         sys.exit(-1)
-
-#     # Play the audio using the platform's default player
-#     if sys.platform == "win32":
-#         os.startfile(output)
-#     else:
-#         # The following works on macOS and Linux. (Darwin = mac, xdg-open = linux).
-#         opener = "open" if sys.platform == "darwin" else "xdg-open"
-#         subprocess.call([opener, output])
-    
-#     return {'output':output}
+FastAPIInstrumentor.instrument_app(app)

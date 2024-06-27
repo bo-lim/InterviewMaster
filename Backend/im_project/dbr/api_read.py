@@ -5,7 +5,24 @@ from dotenv import load_dotenv
 from typing import Optional
 from pymongo import MongoClient
 from pydantic import BaseModel
-import os, uuid, requests
+import os, uuid, requests, logging
+from opentelemetry import trace
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler 
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry._logs import (
+    SeverityNumber,
+    get_logger,
+    get_logger_provider,
+    std_to_otel,
+    set_logger_provider
+)
 
 # 테스트 방법(외부)
 # 192.168.0.66:8000/docs
@@ -37,7 +54,44 @@ client = MongoClient(connection_string)
 db = client["im"]
 collection = db["InterviewMaster"]
 
+# LOG
+otel_endpoint_url = os.getenv("OTEL_ENDPOINT_URL", 'http://opentelemetry-collector.istio-system.svc.cluster.local:4317')
 
+class FormattedLoggingHandler(LoggingHandler):
+    def emit(self, record: logging.LogRecord) -> None:
+        msg = self.format(record)
+        record.msg = msg
+        record.args = None
+        self._logger.emit(self._translate(record))
+
+def otel_logging_init():
+    # ------------Logging
+    # Set logging level
+    # CRITICAL = 50
+    # ERROR = 40
+    # WARNING = 30
+    # INFO = 20
+    # DEBUG = 10
+    # NOTSET = 0
+    # default = WARNING
+    
+    # ------------ Opentelemetry loging initialization
+    logger_provider = LoggerProvider(
+        resource=Resource.create({})
+    )
+    set_logger_provider(logger_provider)
+    otlp_log_exporter = OTLPLogExporter(endpoint=otel_endpoint_url)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
+    otel_log_handler = FormattedLoggingHandler(logger_provider=logger_provider)
+
+    LoggingInstrumentor().instrument()
+    logFormatter = logging.Formatter(os.getenv("OTEL_PYTHON_LOG_FORMAT", None))
+    otel_log_handler.setFormatter(logFormatter)
+    logging.getLogger().addHandler(otel_log_handler)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+otel_logging_init()
 
 ##########################
 ########## test ##########
@@ -70,6 +124,7 @@ async def get_uuid():
 # 호출시 auth로 redirect해서 인증 진행
 @app.get("/dbr/act/kakao")
 def kakao():
+    logger.info('LOGIN')
     kakao_client_key = os.getenv("KAKAO_CLIENT_KEY")
     if os.getenv("env") == "k8s":
         kakao_url = os.getenv("KAKAO_REDIRECT_K8S_URI")
@@ -102,8 +157,10 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
     kakao_secret_key = os.getenv("KAKAO_SECRET_KEY")
     if os.getenv("env") == "k8s":
         kakao_url = os.getenv("KAKAO_REDIRECT_K8S_URI")
+        db_check_url = os.getenv("DB_CHECK_K8S_URI")
     else:
         kakao_url = os.getenv("KAKAO_REDIRECT_LOC_URI")
+        db_check_url = os.getenv("DB_CHECK_LOC_URI")
     
     url = f'https://kauth.kakao.com/oauth/token?grant_type=authorization_code&client_id={kakao_client_key}&redirect_uri={kakao_url}&code={code}&client_secret={kakao_secret_key}'
     
@@ -132,11 +189,11 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
         # user정보가 없을 경우에는 false값 넘겨줘서 신규가입 화면으로
         # user정보가 있을 경우에는 true값 넘겨줘서 마이페이지 확인 화면 or 메인페이지로
         if not user:
-            print("*****user info DB result*****\n신규유저 : ", user, "\n*****************************")
-            url = f"http://192.168.0.34:3000/auth?email_id={email}&access_token={access_token}&message=new"
+            print("*****user info DB result*****\n신규유저\n ", user, "\n*****************************")
+            url = f"{db_check_url}/auth?email_id={email}&access_token={access_token}&message=new"
         else:
-            print("*****user info DB result*****\n기존유저 : ", user, "\n*****************************")
-            url = f"http://192.168.0.34:3000/auth?email_id={email}&access_token={access_token}&message=main"
+            print("*****user info DB result*****\n기존유저\n ", user, "\n*****************************")
+            url = f"{db_check_url}/auth?email_id={email}&access_token={access_token}&message=main"
 
         response = RedirectResponse(url)
         return response
@@ -152,6 +209,7 @@ class ItemToken(BaseModel):
 
 @app.post("/dbr/act/kakao/logout")
 def kakaoLogout(item: ItemToken, response: Response):
+    logger.info('LOGOUT')
     try:
         access_token = item.access_token
 
@@ -160,7 +218,7 @@ def kakaoLogout(item: ItemToken, response: Response):
         res = requests.post(url, headers=headers)
         result = res.json()
         
-        print("*****Logout result*****\n", result, "\n*****************************")
+        print("*****Logout result*****\n", result, "\n***********************")
         
         if res.status_code != 200:
             raise HTTPException(status_code=res.status_code, detail="Failed to logout from Kakao")
@@ -176,6 +234,7 @@ def kakaoLogout(item: ItemToken, response: Response):
 # access_token받아야 로그아웃 처리 가능
 @app.get("/dbr/act/kakao/kill/{token}")
 def kakaokill(token: str, response: Response):
+    logger.info('LOGOUT')
     try:
         # 액세스 토큰(강제 kill)
         access_token = token
@@ -185,7 +244,7 @@ def kakaokill(token: str, response: Response):
         res = requests.post(url, headers=headers)
         result = res.json()
         
-        print("*****Logout result*****\n", result, "\n*****************************")
+        print("*****Logout result*****\n", result, "\n***********************")
         
         if res.status_code != 200:
             raise HTTPException(status_code=res.status_code, detail="Failed to logout from Kakao")
@@ -221,6 +280,26 @@ async def get_user(user_id: str):
 
 
 
+# 신규 면접 번호 생성
+# get
+# 입력값 user_id
+# 출력값 user_itv_cnt
+@app.get("/dbr/get_newitvcnt/{user_id}")
+async def get_newitvcnt(user_id: str):
+
+    user = collection.find_one({"_id": user_id}, {"_id": 0, "user_history.user_itv_cnt": 1})
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    new_itv_cnt = user.get("user_history", {}).get("user_itv_cnt")
+
+    return {
+        "new_itv_cnt": new_itv_cnt
+    }
+
+
+
 # 마이페이지(면접, 질문) 조회
 # get
 # 입력값 user_id
@@ -248,9 +327,10 @@ async def get_itv(user_id: str):
 # 출력값 user_id, user_history, itv_info
 @app.get("/dbr/get_itv/{user_id}/{itv_no}")
 async def get_itv_detail(user_id: str, itv_no: str):
+    logger.info('REPORT 정보 조회')
 
     itv = collection.find_one({"_id": user_id}, {"_id": 0, f"itv_info.{itv_no}": 1})
-    print("tt", itv)
+    print("*****itv_list*****\n", itv)
 
     if not itv:
         raise HTTPException(status_code=404, detail="Itv not found")
@@ -262,3 +342,5 @@ async def get_itv_detail(user_id: str, itv_no: str):
         "user_id": user_id,
         "itv_info": {itv_no: itv_info}
     }
+
+FastAPIInstrumentor.instrument_app(app)

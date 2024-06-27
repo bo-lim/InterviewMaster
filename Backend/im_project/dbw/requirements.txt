@@ -18,6 +18,9 @@ markdown-it-py==3.0.0
 MarkupSafe==2.1.5
 mdurl==0.1.2
 orjson==3.10.5
+opentelemetry-distro==0.46b0
+opentelemetry-exporter-otlp-proto-grpc==1.25.0
+opentelemetry-instrumentation-fastapi==0.46b0
 pydantic==2.7.4
 pydantic_core==2.18.4
 Pygments==2.18.0
