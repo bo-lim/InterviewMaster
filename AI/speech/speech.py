@@ -87,8 +87,8 @@ app.add_middleware(
 )
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-otel_trace_init()
-# otel_logging_init()
+# otel_trace_init()
+otel_logging_init()
 
 bucket = os.environ["bucket"]
 session = Session(

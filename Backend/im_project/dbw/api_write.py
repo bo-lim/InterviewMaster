@@ -5,7 +5,24 @@ from typing import Optional
 from pymongo import MongoClient
 from pydantic import BaseModel
 from datetime import datetime
-import os, uuid, re
+import os, uuid, re, logging
+from opentelemetry import trace
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler 
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry._logs import (
+    SeverityNumber,
+    get_logger,
+    get_logger_provider,
+    std_to_otel,
+    set_logger_provider
+)
 
 # 테스트 방법(외부)
 # 192.168.0.66:8001/docs
@@ -37,7 +54,54 @@ client = MongoClient(connection_string)
 db = client["im"]
 collection = db["InterviewMaster"]
 
+# LOG
+otel_endpoint_url = os.getenv("OTEL_ENDPOINT_URL", 'http://opentelemetry-collector.istio-system.svc.cluster.local:4317')
 
+class FormattedLoggingHandler(LoggingHandler):
+    def emit(self, record: logging.LogRecord) -> None:
+        msg = self.format(record)
+        record.msg = msg
+        record.args = None
+        self._logger.emit(self._translate(record))
+
+def otel_logging_init():
+    # ------------Logging
+    # Set logging level
+    # CRITICAL = 50
+    # ERROR = 40
+    # WARNING = 30
+    # INFO = 20
+    # DEBUG = 10
+    # NOTSET = 0
+    # default = WARNING
+    
+    # ------------ Opentelemetry loging initialization
+    logger_provider = LoggerProvider(
+        resource=Resource.create({})
+    )
+    set_logger_provider(logger_provider)
+    otlp_log_exporter = OTLPLogExporter(endpoint=otel_endpoint_url)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
+    otel_log_handler = FormattedLoggingHandler(logger_provider=logger_provider)
+
+    LoggingInstrumentor().instrument()
+    logFormatter = logging.Formatter(os.getenv("OTEL_PYTHON_LOG_FORMAT", None))
+    otel_log_handler.setFormatter(logFormatter)
+    logging.getLogger().addHandler(otel_log_handler)
+
+def otel_trace_init():
+    trace.set_tracer_provider(
+       TracerProvider(
+           resource=Resource.create({}),
+       ),
+    )
+    otlp_span_exporter = OTLPSpanExporter(endpoint=otel_endpoint_url)
+    trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(otlp_span_exporter))
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+otel_trace_init()
+otel_logging_init()
 
 ###########################
 ########### DBW ###########
