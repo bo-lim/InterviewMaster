@@ -223,6 +223,26 @@ async def get_user(user_id: str):
 
 
 
+# 신규 면접 번호 생성
+# get
+# 입력값 user_id
+# 출력값 user_itv_cnt
+@app.get("/get_newitvcnt/{user_id}")
+async def get_newitvcnt(user_id: str):
+
+    user = collection.find_one({"_id": user_id}, {"_id": 0, "user_history.user_itv_cnt": 1})
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    new_itv_cnt = user.get("user_history", {}).get("user_itv_cnt")
+
+    return {
+        "new_itv_cnt": new_itv_cnt
+    }
+
+
+
 # 마이페이지(면접, 질문) 조회
 # get
 # 입력값 user_id
