@@ -102,8 +102,10 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
     kakao_secret_key = os.getenv("KAKAO_SECRET_KEY")
     if os.getenv("env") == "k8s":
         kakao_url = os.getenv("KAKAO_REDIRECT_K8S_URI")
+        db_check_url = os.getenv("DB_CHECK_K8S_URI")
     else:
         kakao_url = os.getenv("KAKAO_REDIRECT_LOC_URI")
+        db_check_url = os.getenv("DB_CHECK_LOC_URI")
     
     url = f'https://kauth.kakao.com/oauth/token?grant_type=authorization_code&client_id={kakao_client_key}&redirect_uri={kakao_url}&code={code}&client_secret={kakao_secret_key}'
     
@@ -132,11 +134,11 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
         # user정보가 없을 경우에는 false값 넘겨줘서 신규가입 화면으로
         # user정보가 있을 경우에는 true값 넘겨줘서 마이페이지 확인 화면 or 메인페이지로
         if not user:
-            print("*****user info DB result*****\n신규유저 : ", user, "\n*****************************")
-            url = f"http://192.168.0.34:3000/auth?email_id={email}&access_token={access_token}&message=new"
+            print("*****user info DB result*****\n신규유저\n ", user, "\n*****************************")
+            url = f"{db_check_url}/auth?email_id={email}&access_token={access_token}&message=new"
         else:
-            print("*****user info DB result*****\n기존유저 : ", user, "\n*****************************")
-            url = f"http://192.168.0.34:3000/auth?email_id={email}&access_token={access_token}&message=main"
+            print("*****user info DB result*****\n기존유저\n ", user, "\n*****************************")
+            url = f"{db_check_url}/auth?email_id={email}&access_token={access_token}&message=main"
 
         response = RedirectResponse(url)
         return response
@@ -160,7 +162,7 @@ def kakaoLogout(item: ItemToken, response: Response):
         res = requests.post(url, headers=headers)
         result = res.json()
         
-        print("*****Logout result*****\n", result, "\n*****************************")
+        print("*****Logout result*****\n", result, "\n***********************")
         
         if res.status_code != 200:
             raise HTTPException(status_code=res.status_code, detail="Failed to logout from Kakao")
@@ -185,7 +187,7 @@ def kakaokill(token: str, response: Response):
         res = requests.post(url, headers=headers)
         result = res.json()
         
-        print("*****Logout result*****\n", result, "\n*****************************")
+        print("*****Logout result*****\n", result, "\n***********************")
         
         if res.status_code != 200:
             raise HTTPException(status_code=res.status_code, detail="Failed to logout from Kakao")
@@ -221,6 +223,26 @@ async def get_user(user_id: str):
 
 
 
+# 신규 면접 번호 생성
+# get
+# 입력값 user_id
+# 출력값 user_itv_cnt
+@app.get("/dbr/get_newitvcnt/{user_id}")
+async def get_newitvcnt(user_id: str):
+
+    user = collection.find_one({"_id": user_id}, {"_id": 0, "user_history.user_itv_cnt": 1})
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    new_itv_cnt = user.get("user_history", {}).get("user_itv_cnt")
+
+    return {
+        "new_itv_cnt": new_itv_cnt
+    }
+
+
+
 # 마이페이지(면접, 질문) 조회
 # get
 # 입력값 user_id
@@ -250,7 +272,7 @@ async def get_itv(user_id: str):
 async def get_itv_detail(user_id: str, itv_no: str):
 
     itv = collection.find_one({"_id": user_id}, {"_id": 0, f"itv_info.{itv_no}": 1})
-    print("tt", itv)
+    print("*****itv_list*****\n", itv)
 
     if not itv:
         raise HTTPException(status_code=404, detail="Itv not found")
