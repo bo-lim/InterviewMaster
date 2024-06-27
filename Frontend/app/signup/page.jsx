@@ -7,6 +7,7 @@ import { Label } from "../../components/ui/label";
 import { Button } from "../../components/ui/button"; // Button 컴포넌트 임포트
 import { Cookies } from "react-cookie";
 import { useRouter } from "next/navigation";
+import { postSignup } from "../api";
 
 const Signup = () => {
   const cookies = new Cookies();
@@ -32,9 +33,18 @@ const Signup = () => {
     e.preventDefault();
 
     try {
-      // 서버로 폼 데이터 전송
-      const response = await axios.post('http://192.168.0.15:30803/dbw/create_user', formData);
-      console.log('Server response:', response.data);
+      const signup_formDta = new FormData();
+      signup_formDta.append('user_id', formData.user_id);
+      signup_formDta.append('name', formData.name);
+      signup_formDta.append('nickname', formData.nickname);
+      signup_formDta.append('gender', formData.gender);
+      signup_formDta.append('birthday', formData.birthday);
+      signup_formDta.append('tel', formData.tel);
+
+      console.log('user_id');
+
+      const response = await postSignup(signup_formDta);
+      console.log(response);
 
       // 회원가입 성공 후 페이지 이동
       router.push('/mypage');

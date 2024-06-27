@@ -56,7 +56,7 @@ const Interview = () => {
 
   const [audio_key,setAudio_key] = useState('audio/tmp.mp3');
   const [video_key,setVideo_key] = useState('video/tmp.webm');
-  
+  const itv_cnt = cookies.get('itv_cnt');
 
   const recorderControls = useAudioRecorder();
   const addAudioElement = async (blob) => {
@@ -132,9 +132,11 @@ const Interview = () => {
   
 
   const clickStopButton = (recording_id) => {
-    const file_name = cookies.get('itv_no') + '-' + count;
-    setAudio_key(`audio/${file_name + '.mp3'}`);
-    setVideo_key(`video/${file_name + '.webm'}`);
+    const user_uuid = cookies.get('user_uuid');
+    //get itv_cnt api 호출
+   
+    setAudio_key(`${user_uuid}/${itv_cnt}/audio.mp3`);
+    setVideo_key(`${user_uuid}/${itv_cnt}/video.webm`);
     recorderControls.stopRecording();
     stopAndUpload(recording_id);
     setMessage(null);
@@ -151,9 +153,9 @@ const Interview = () => {
     var text_path = ''
     try {
       const stt_formData = new FormData();
-      stt_formData.append('itv_no',cookies.get('itv_no'));
+      stt_formData.append('user_uuid',cookies.get('user_uuid'));
       stt_formData.append('file_path',audio_key);
-      stt_formData.append('question_no',count);
+      stt_formData.append('itv_cnt',itv_cnt);
       const response = await post_stt(stt_formData);
       console.log(response);
       console.log('STT 끝');

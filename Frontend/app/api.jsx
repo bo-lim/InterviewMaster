@@ -1,6 +1,7 @@
 "use server";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
+import { fromJSON } from "postcss";
 const bucket = process.env.BUCKET_NAME;
 const s3_client = new S3Client({
     region: 'ap-northeast-2',
@@ -80,9 +81,9 @@ export const post_new_qs = async(formData) => {
 }
 
 export const post_stt = async(formData) => {
-  const itv_no = formData.get("itv_no");
+  const user_uuid = formData.get("user_uuid");
+  const itv_cnt = formData.get("itv_cnt");
   const file_path = formData.get("file_path");
-  const question_no = formData.get("question_no");
 
   try {
     // user_id 전송
@@ -90,9 +91,9 @@ export const post_stt = async(formData) => {
       method: 'POST',
       headers: {"Content-Type": "application/json",},
       body: JSON.stringify({
-        itv_no: itv_no,
-        file_path: file_path,
-        question_no: question_no
+        user_uuid: user_uuid,
+        itv_cnt: itv_cnt,
+        file_path: file_path
       }),
     });
     if (!response.ok) {
@@ -162,9 +163,10 @@ export const create_polly = async (text) => {
 export async function uploadFileToS3(formData){
     const file = formData.get('file');
     const arrayBuffer = await file.arrayBuffer();
-    const user_id = formData.get('user_id');
-    
-    const file_key = `coverletter/${user_id}_${Date.now()}_${file.name}`;
+    const itv_cnt = formData.get('itv_cnt');
+    const user_uuid = formData.get('user_uuid');
+    const file_key = `${user_uuid}/${itv_cnt}/${file.name}`;
+    //const file_key = `coverletter/${user_id}_${Date.now()}_${file.name}`;
     const command = new PutObjectCommand({
       Key: file_key,
       Body: arrayBuffer,
@@ -240,5 +242,79 @@ export async function postCV(formData) {
   } catch (error) {
     console.error("Error:", error);
     return "Failed to post coverletter";
+  }
+}
+
+export async function getReport(user_id, itv_no) { // 함수 인자에 user_id 추가
+  const response = await fetch(`${process.env.GET_API}/get_itv/${user_id}/${itv_no}`); // 템플릿 리터럴로 user_id 포함
+  if (!response.ok) throw new Error("Failed to getReport fetch data");
+  return response.json();
+}
+
+export async function getItv_cnt(user_id) { // 함수 인자에 user_id 추가
+  const response = await fetch(`${process.env.GET_API}/get_newitvcnt/${user_id}`); // 템플릿 리터럴로 user_id 포함
+  if (!response.ok) throw new Error("Failed to getItv fetch data");
+  return response.json();
+}
+
+//로그아웃
+export async function postLogout(formData) {
+  const access_token = formData.get("access_token");
+
+  try {
+    // token 전송
+    const response = await fetch(`${process.env.GET_API}/act/kakao/logout`, { 
+      access_token: access_token });
+   
+      if (!response.ok) {
+        const errorDetails = await response.text();
+        // console.error('Error details:', errorDetails);
+        throw new Error("Failed to post logout");
+    }
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    return "Failed to post coverletter";
+  }
+}
+
+export async function get_kakao(){
+  return `${process.env.GET_API}/act/kakao`
+}
+
+//회원가입
+export async function postSignup(formData) {
+  const user_id = formData.get("user_id");
+  const name = formData.get("name");
+  const nickname = formData.get("nickname");
+  const gender = formData.get("gender");
+  const birthday = formData.get("birthday");
+  const tel = formData.get("tel");
+
+  try {
+    //사용자 회원가입 정보 전송
+    const response = await fetch(`${process.env.POST_API}/create_user`, { 
+      method: 'POST',
+      headers: {"Content-Type": "application/json",},
+      body: JSON.stringify({
+        user_id: user_id,
+        name: name,
+        nickname: nickname,
+        gender: gender,
+        birthday: birthday,
+        tel: tel
+      }),
+    });
+
+   
+      if (!response.ok) {
+        const errorDetails = await response.text();
+        // console.error('Error details:', errorDetails);
+        throw new Error("Failed to post coverletter");
+    }
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    return "Failed to post signups";
   }
 }

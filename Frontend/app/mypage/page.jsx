@@ -4,7 +4,8 @@ import DevImg from "../../components/Devlmg";
 import { Cookies } from "react-cookie";
 import { Button } from "../../components/ui/button";
 import axios from "axios";
-
+import { getUserList } from "../api";
+import { postLogout } from "../api";
 import { useRouter } from 'next/navigation';
 import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
 // import ProjectCard from '@/components/ProjectCard';
@@ -20,17 +21,18 @@ import {
   CardTitle,
 } from "../../components/ui/card"
 import { BUILD_ID_FILE } from "next/dist/shared/lib/constants";
+import { getReport } from "../api";
 
-export async function getUserList(user_id) {
+// export async function getUserList(user_id) {
 
-  try {
-    const response = await axios.get(`http://192.168.0.15:30803/dbr/get_user/${user_id}`);
-    console.log("mypage list", response)
-    return response.data;
-  } catch (error) {
-    throw new Error("Failed to fetch data: " + error.message);
-  }
-}
+//   try {
+//     const response = await axios.get(`http://192.168.0.15:30803/dbr/get_user/${user_id}`);
+//     console.log("mypage list", response)
+//     return response.data;
+//   } catch (error) {
+//     throw new Error("Failed to fetch data: " + error.message);
+//   }
+// }
 
 
 const Mypage = () => {
@@ -42,6 +44,7 @@ const Mypage = () => {
   // const [category, setCategory] = useState('all projects');
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
+  const accessToken = cookies.get('access_token'); // Assuming your access token key is 'access_token'
 
   useEffect(() => {
     const checkLoginStatus = async () => {
@@ -50,10 +53,13 @@ const Mypage = () => {
         router.push('/login'); // 로그인 되어 있지 않으면 로그인 페이지로 리다이렉트
         return;
       }
+     
 
       try {
         const data = await getUserList(user_id);
         setUserData(data.user_info);
+        cookies.set("user_uuid", data.user_info.user_uuid)
+      
 
       } catch (error) {
         setError("Failed to fetch user data: " + error.message);
@@ -66,8 +72,11 @@ const Mypage = () => {
 
   const handleLogout = async () => {
     try {
-      const accessToken = cookies.get('access_token'); // Assuming your access token key is 'access_token'
-      const response = await axios.post('http://192.168.0.15:30803/dbr/act/kakao/logout', { access_token: accessToken });
+      const logout_formData = new FormData();
+      logout_formData.append('access_token', accessToken);
+
+      const response = await postLogout(logout_formData);   
+      console.log(response);   
       if (response.data.logout === 'success') {
         cookies.remove('access_token'); // Remove access token from cookies
         cookies.remove('user_id'); // Remove user_id from cookies

@@ -19,7 +19,7 @@ import { Label } from "../../components/ui/label";
 // import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { RiBriefcase4Fill, RiTeamFill, RiTodoFill } from "react-icons/ri";
 import { Cookies } from "react-cookie";
-import { postItv, uploadFileToS3 } from "../api";
+import { getItv_cnt, postItv, uploadFileToS3 } from "../api";
 
 const CustomDialog = () => {
   const cookies = new Cookies();
@@ -29,11 +29,12 @@ const CustomDialog = () => {
   const [file, setFile] = useState(null);
   const router = useRouter();
 
+
   useEffect(() => {
     // 로그인 여부 확인
-    if (!user_id) {
-      router.push('/login'); // 로그인 되어 있지 않으면 로그인 페이지로 리다이렉트
-    }
+    // if (!user_id) {
+    //   router.push('/login'); // 로그인 되어 있지 않으면 로그인 페이지로 리다이렉트
+    // }
   }, []); // 빈 배열을 전달하여 컴포넌트가 마운트될 때 한 번만 실행되도록 설정
   const handleNext = () => {
     setStep(step + 1);
@@ -41,11 +42,20 @@ const CustomDialog = () => {
   
   const handleSubmit = async () => {
 
+
     console.log(file);
     console.log(user_id);
+    //int_cnt get 
+    const itv_cnt = await getItv_cnt(user_id);
+    console.log(itv_cnt.new_itv_cnt);
+    console.log(itv_cnt.new_itv_cnt + 1);
+    cookies.set('itv_cnt', itv_cnt.new_itv_cnt + 1);
+
     const s3_formData = new FormData();
     s3_formData.append('file', file);
-    s3_formData.append('user_id',user_id)
+    // s3_formData.append('user_id',user_id);
+    s3_formData.append('itv_cnt', itv_cnt.new_itv_cnt + 1);
+    s3_formData.append('user_uuid',cookies.get("user_uuid"));
     const file_path = await uploadFileToS3(s3_formData);
     console.log(file_path);
     const newitv_formData = new FormData();
@@ -59,7 +69,7 @@ const CustomDialog = () => {
     cookies.set('itv_no', response.new_itv_no);
     cookies.set('coverletter_url', file_path);
     cookies.set('position', job);
-    
+    console.log(response.new_itv_no);
 
     router.push('/information');
   };

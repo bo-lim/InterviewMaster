@@ -26,7 +26,7 @@ const About = () => {
                 AI 모의 면접으로 취업 준비를 시작하세요.
               </h1>
               <p className="max-w-[600px] text-muted-foreground md:text-xl">
-                AI 기반 모의 면접 서비스로 실전 면접 실력을 키워보세요. 전문가 피드백과 함께 면접 스킬을 향상시킬 수 있습니다.
+                AI 기반 모의 면접 서비스로 실전 면접 실력을 키워보세요. 꼬리 질문과 답변에 대한 결과를 바탕으로 스스로 피드백이 가능하며, 이를 통해 면접 스킬을 향상 시킬 수 있습니다.
               </p>
             </div>
             <div className="flex flex-col gap-2 min-[400px]:flex-row">

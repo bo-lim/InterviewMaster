@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import { Cookies } from "react-cookie";
 import { useRouter } from "next/navigation";
+import { getUserList, get_kakao } from "../api";
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -14,12 +15,14 @@ const Login = () => {
   };
 
   const handleButtonClick = async (event) => {
-     window.location.href = "http://192.168.0.15:30803/dbr/act/kakao";
+    const url = await get_kakao();
+    console.log(url)
+    window.location.href = url;
 
   //  cookies.set('user_id',"ygang4546@gmail.com");
      // 임시 로그인
-    // const response = await axios.get("http://192.168.0.66:8002/act/kakao")
-    
+    //const response = await getUserList("ygang4546@gmail.com");
+    // cookies.set('user_id', response.user_id);
     // print("in")
     
     // console.log(response)
