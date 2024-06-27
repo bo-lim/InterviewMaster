@@ -35,6 +35,7 @@ from opentelemetry._logs import (
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
+otel_endpoint_url = os.getenv("OTEL_ENDPOINT_URL", 'http://opentelemetry-collector.istio-system.svc.cluster.local:4317')
 
 class FormattedLoggingHandler(LoggingHandler):
     def emit(self, record: logging.LogRecord) -> None:
@@ -59,6 +60,8 @@ def otel_logging_init():
         resource=Resource.create({})
     )
     set_logger_provider(logger_provider)
+    otlp_log_exporter = OTLPLogExporter(endpoint=otel_endpoint_url)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
     otel_log_handler = FormattedLoggingHandler(logger_provider=logger_provider)
     LoggingInstrumentor().instrument()
     logFormatter = logging.Formatter(os.getenv("OTEL_PYTHON_LOG_FORMAT", None))
@@ -84,8 +87,8 @@ app.add_middleware(
 )
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-# otel_trace_init()
-otel_logging_init()
+otel_trace_init()
+# otel_logging_init()
 
 bucket = os.environ["bucket"]
 session = Session(
