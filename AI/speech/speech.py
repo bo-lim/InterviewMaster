@@ -35,7 +35,7 @@ from opentelemetry._logs import (
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
-
+otel_endpoint_url = 'http://opentelemetry-collector.istio-system.svc.cluster.local:4317'
 # resource = Resource(attributes={
 #     SERVICE_NAME: "itm-bce-txt"
 # })
@@ -52,19 +52,6 @@ class FormattedLoggingHandler(LoggingHandler):
         record.args = None
         self._logger.emit(self._translate(record))
 
-def otel_get_env_vars():
-    otel_http_headers = {}
-    try:
-        decoded_http_headers = os.getenv("OTEL_ENDPOINT_HTTP_HEADERS", "")
-        key_values = decoded_http_headers.split(",")
-        for key_value in key_values:
-            key, value = key_value.split("=")
-            otel_http_headers[key] = value
-    except Exception as e:
-        print(f"Error parsing OTEL_ENDPOINT_HTTP_HEADERS: {str(e)}")
-    otel_endpoint_url = os.getenv("OTEL_ENDPOINT_URL", None)
-    
-    return otel_endpoint_url, otel_http_headers
 
 def otel_logging_init():
     # ------------Logging
@@ -76,25 +63,8 @@ def otel_logging_init():
     # DEBUG = 10
     # NOTSET = 0
     # default = WARNING
-    log_level = str(os.getenv("OTEL_PYTHON_LOG_LEVEL", "INFO")).upper()
-    if (log_level == "CRITICAL"):
-        log_level = logging.CRITICAL
-        print(f"Using log level: CRITICAL / {log_level}")
-    elif (log_level == "ERROR"):
-        log_level = logging.ERROR
-        print(f"Using log level: ERROR / {log_level}")
-    elif (log_level == "WARNING"):
-        log_level = logging.WARNING
-        print(f"Using log level: WARNING / {log_level}")
-    elif (log_level == "INFO"):
-        log_level = logging.INFO
-        print(f"Using log level: INFO / {log_level}")
-    elif (log_level == "DEBUG"):
-        log_level = logging.DEBUG
-        print(f"Using log level: DEBUG / {log_level}")
-    elif (log_level == "NOTSET"):
-        log_level = logging.INFO
-        print(f"Using log level: NOTSET / {log_level}")
+    log_level = logging.INFO
+    print(f"Using log level: NOTSET / {log_level}")
 
     # ------------ Opentelemetry loging initialization
 
@@ -102,8 +72,7 @@ def otel_logging_init():
         resource=Resource.create({})
     )
     set_logger_provider(logger_provider)
-    otel_endpoint_url, otel_http_headers = otel_get_env_vars()
-    otlp_log_exporter = OTLPLogExporter(endpoint=otel_endpoint_url,headers=otel_http_headers)
+    otlp_log_exporter = OTLPLogExporter(endpoint=otel_endpoint_url)
     logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
 
     otel_log_handler = FormattedLoggingHandler(logger_provider=logger_provider)
@@ -121,8 +90,7 @@ def otel_trace_init():
            resource=Resource.create({}),
        ),
     )
-    otel_endpoint_url, otel_http_headers = otel_get_env_vars()
-    otlp_span_exporter = OTLPSpanExporter(endpoint=otel_endpoint_url,headers=otel_http_headers)
+    otlp_span_exporter = OTLPSpanExporter(endpoint=otel_endpoint_url)
     trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(otlp_span_exporter))
 
 app = FastAPI()
