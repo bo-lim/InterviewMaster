@@ -227,7 +227,7 @@ async def get_user(user_id: str):
 # get
 # 입력값 user_id
 # 출력값 user_itv_cnt
-@app.get("/get_newitvcnt/{user_id}")
+@app.get("/dbr/get_newitvcnt/{user_id}")
 async def get_newitvcnt(user_id: str):
 
     user = collection.find_one({"_id": user_id}, {"_id": 0, "user_history.user_itv_cnt": 1})
