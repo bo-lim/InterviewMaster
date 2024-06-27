@@ -89,18 +89,8 @@ def otel_logging_init():
     otel_log_handler.setFormatter(logFormatter)
     logging.getLogger().addHandler(otel_log_handler)
 
-def otel_trace_init():
-    trace.set_tracer_provider(
-       TracerProvider(
-           resource=Resource.create({}),
-       ),
-    )
-    otlp_span_exporter = OTLPSpanExporter(endpoint=otel_endpoint_url)
-    trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(otlp_span_exporter))
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-otel_trace_init()
 otel_logging_init()
 
 ###########################
@@ -153,8 +143,10 @@ async def create_user(item: ItemUser):
         result = collection.insert_one(new_user)
         
         if result.inserted_id:
+            logger.info('SIGN UP')
             return {"message": "User created successfully", "user_id": result.inserted_id}
         else:
+            logger.error('Failed SIGN UP')
             raise HTTPException(status_code=400, detail="User creation failed")
 
     except Exception as e:
@@ -218,7 +210,7 @@ async def mod_user(item: ItemUser):
             result = collection.update_one({"_id": user_id}, {"$set": update_fields})
             if result.modified_count == 0:
                 raise HTTPException(status_code=400, detail="Update failed")
-
+        logger.info('회원정보 수정')
         return {"status": "success", "updated_fields": update_fields}
 
     except Exception as e:
@@ -314,6 +306,7 @@ async def new_itv(item: ItemItv):
 
         if result.modified_count == 0:
             raise HTTPException(status_code=400, detail="Update failed")
+        logger.info('면접 시작')
         return {"message": "Update successful", "new_itv_no": new_itv_no}
 
     except Exception as e:
@@ -344,6 +337,7 @@ class ItemQs(BaseModel):
 
 @app.post("/dbw/new_qs")
 async def new_qs(item: ItemQs):
+    logger.info(f'ITV_NO:{item.itv_no} QnA:{item.qs_no} 종료')
     user_id = item.user_id
     itv_no = item.itv_no
     # qs_no 1 ~ 9 : 문자열 01 ~ 09처리
@@ -478,3 +472,4 @@ async def update_fb(item: ItemFb):
     except Exception as e:
         print("Exception occurred:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
+FastAPIInstrumentor.instrument_app(app)

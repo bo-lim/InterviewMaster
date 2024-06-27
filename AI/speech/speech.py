@@ -68,15 +68,6 @@ def otel_logging_init():
     otel_log_handler.setFormatter(logFormatter)
     logging.getLogger().addHandler(otel_log_handler)
 
-def otel_trace_init():
-    trace.set_tracer_provider(
-       TracerProvider(
-           resource=Resource.create({}),
-       ),
-    )
-    otlp_span_exporter = OTLPSpanExporter(endpoint=otel_endpoint_url)
-    trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(otlp_span_exporter))
-
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -87,7 +78,6 @@ app.add_middleware(
 )
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-# otel_trace_init()
 otel_logging_init()
 
 bucket = os.environ["bucket"]
