@@ -25,17 +25,18 @@ const Information = () => {
         const newCV_formData = new FormData();
         newCV_formData.append('coverletter_url',cookies.get('coverletter_url'));
         newCV_formData.append('position',cookies.get('position'));
+        newCV_formData.append('itv_no',cookies.get('itv_no'));
         const response = await postCV(newCV_formData)
 
         console.log(response);
         setDisabled(false);
         //console.log(response.data.response);
-        console.log(response.thread_id);
+        // console.log(response.thread_id);
 
         // // 쿠키에 데이터 저장
         cookies.set('simul_info', response.response);
-        cookies.set('simul_ques', response.question);
-        cookies.set('thread_id', response.thread_id);
+        cookies.set('simul_ques', response.response);
+        // cookies.set('thread_id', response.thread_id);
       } catch (error) {
         console.log(error);
       }

@@ -69,7 +69,6 @@ const CustomDialog = () => {
     cookies.set('itv_no', response.new_itv_no);
     cookies.set('coverletter_url', file_path);
     cookies.set('position', job);
-    console.log(response.new_itv_no);
 
     router.push('/information');
   };
