@@ -5,7 +5,24 @@ from dotenv import load_dotenv
 from typing import Optional
 from pymongo import MongoClient
 from pydantic import BaseModel
-import os, uuid, requests
+import os, uuid, requests, logging
+from opentelemetry import trace
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler 
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry._logs import (
+    SeverityNumber,
+    get_logger,
+    get_logger_provider,
+    std_to_otel,
+    set_logger_provider
+)
 
 # 테스트 방법(외부)
 # 192.168.0.66:8000/docs
@@ -37,7 +54,54 @@ client = MongoClient(connection_string)
 db = client["im"]
 collection = db["InterviewMaster"]
 
+# LOG
+otel_endpoint_url = os.getenv("OTEL_ENDPOINT_URL", 'http://opentelemetry-collector.istio-system.svc.cluster.local:4317')
 
+class FormattedLoggingHandler(LoggingHandler):
+    def emit(self, record: logging.LogRecord) -> None:
+        msg = self.format(record)
+        record.msg = msg
+        record.args = None
+        self._logger.emit(self._translate(record))
+
+def otel_logging_init():
+    # ------------Logging
+    # Set logging level
+    # CRITICAL = 50
+    # ERROR = 40
+    # WARNING = 30
+    # INFO = 20
+    # DEBUG = 10
+    # NOTSET = 0
+    # default = WARNING
+    
+    # ------------ Opentelemetry loging initialization
+    logger_provider = LoggerProvider(
+        resource=Resource.create({})
+    )
+    set_logger_provider(logger_provider)
+    otlp_log_exporter = OTLPLogExporter(endpoint=otel_endpoint_url)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
+    otel_log_handler = FormattedLoggingHandler(logger_provider=logger_provider)
+
+    LoggingInstrumentor().instrument()
+    logFormatter = logging.Formatter(os.getenv("OTEL_PYTHON_LOG_FORMAT", None))
+    otel_log_handler.setFormatter(logFormatter)
+    logging.getLogger().addHandler(otel_log_handler)
+
+def otel_trace_init():
+    trace.set_tracer_provider(
+       TracerProvider(
+           resource=Resource.create({}),
+       ),
+    )
+    otlp_span_exporter = OTLPSpanExporter(endpoint=otel_endpoint_url)
+    trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(otlp_span_exporter))
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+otel_trace_init()
+otel_logging_init()
 
 ##########################
 ########## test ##########
@@ -70,6 +134,7 @@ async def get_uuid():
 # 호출시 auth로 redirect해서 인증 진행
 @app.get("/dbr/act/kakao")
 def kakao():
+    logger.info('사용자 로그인')
     kakao_client_key = os.getenv("KAKAO_CLIENT_KEY")
     if os.getenv("env") == "k8s":
         kakao_url = os.getenv("KAKAO_REDIRECT_K8S_URI")
@@ -154,6 +219,7 @@ class ItemToken(BaseModel):
 
 @app.post("/dbr/act/kakao/logout")
 def kakaoLogout(item: ItemToken, response: Response):
+    logger.info('사용자 로그아웃')
     try:
         access_token = item.access_token
 
@@ -284,3 +350,5 @@ async def get_itv_detail(user_id: str, itv_no: str):
         "user_id": user_id,
         "itv_info": {itv_no: itv_info}
     }
+
+FastAPIInstrumentor.instrument_app(app)

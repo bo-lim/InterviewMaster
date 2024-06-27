@@ -44,7 +44,6 @@ class FormattedLoggingHandler(LoggingHandler):
         record.args = None
         self._logger.emit(self._translate(record))
 
-
 def otel_logging_init():
     # ------------Logging
     # Set logging level
@@ -114,7 +113,7 @@ class TextItem(BaseModel):
 @app.post("/speech/stt", status_code=200)
 async def stt(item: SttItem):
     start_time = datetime.now()
-    file_path = item.file_path
+    file_path = item.file_path.replace('s3://'+bucket+'/','')
     local_file_path = item.user_uuid+item.itv_cnt+".mp3"
     s3.download_file( 
         bucket,
@@ -129,7 +128,7 @@ async def stt(item: SttItem):
             response_format="text"
         )
     os.remove(local_file_path)
-    original_file_name = f'{item.file_path}/{item.itv_cnt}/text.txt'
+    original_file_name = f'{item.user_uuid}/{item.itv_cnt}/text.txt'
     end_time = datetime.now()
     elapsed_time = end_time - start_time
     logger.info(f'STT:{elapsed_time.total_seconds()}')
