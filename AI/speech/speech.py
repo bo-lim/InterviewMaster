@@ -108,7 +108,6 @@ class SttItem(BaseModel):
     user_uuid: str
     itv_cnt: str
     file_path: str
-    question_no: int
 class TextItem(BaseModel):
     text: str
 
@@ -130,7 +129,7 @@ async def stt(item: SttItem):
             response_format="text"
         )
     os.remove(local_file_path)
-    original_file_name = f'{item.file_path}/{item.itv_cnt}/text.txt' + item.itv_no + '_' + str(item.question_no) + '.txt'
+    original_file_name = f'{item.file_path}/{item.itv_cnt}/text.txt'
     end_time = datetime.now()
     elapsed_time = end_time - start_time
     logger.info(f'STT:{elapsed_time.total_seconds()}')
