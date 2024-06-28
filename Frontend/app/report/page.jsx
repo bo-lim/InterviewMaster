@@ -4,61 +4,79 @@ import DevImg from "../../components/Devlmg";
 import { Cookies } from "react-cookie";
 import { getReport, post_review } from "../api";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardHeader } from "../../components/ui/card"
-import { Button } from "../../components/ui/button"
+import { Card, CardHeader } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
+import Link from "next/link";
+
 const Report = () => {
   const [data, setData] = useState(null);
   const [review, setReview] = useState('');
-  const [error, setError] = useState(null);  
+  const [error, setError] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalContent, setModalContent] = useState('');
   const cookies = new Cookies();
   const user_id = cookies.get('user_id'); // 쿠키에서 user_id 가져오기
   const itv_no = cookies.get('itv_no');  // itv_no 값을 정의해야 합니다
 
+  const showModal = (title, content) => {
+    setModalTitle(title);
+    setModalContent(content);
+    setIsModalOpen(true);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-          
-          if (user_id && itv_no) {
-            const review_formData = new FormData();
-            review_formData.append('itv_no',itv_no);
-            const review_response = await post_review(review_formData)
-            console.log(review_response)
-            setReview(review_response.response)
-            const response = await getReport(user_id, itv_no);
-            setData(response.itv_info[itv_no]);
-            console.log(data);
-
-            // const [question, setQuestion] = useState(data);
-
-          } else {
-              console.error("User ID or ITV number is not found");
-          }
-      } catch (error) {
-          setError(error.message);
-          console.error("Error fetching data:", error);
+        if (user_id && itv_no) {
+          const review_formData = new FormData();
+          review_formData.append('itv_no', itv_no);
+          const review_response = await post_review(review_formData);
+          console.log(review_response);
+          setReview(review_response.response);
+          const response = await getReport(user_id, itv_no);
+          setData(response.itv_info[itv_no]);
+          console.log(data);
+        } else {
+          console.error("User ID or ITV number is not found");
         }
-      };
+      } catch (error) {
+        setError(error.message);
+        console.error("Error fetching data:", error);
+      }
+    };
 
-      fetchData();
+    fetchData();
   }, []); // 의존성 배열이 빈 배열이므로 컴포넌트가 마운트될 때만 실행됩니다
 
   return (
     <div className="w-full max-w-6xl mx-auto py-8 px-4">
-      <h1 className="section-title mb-8 xl:mb-16 text-center mx-auto">Report page</h1>
+      <h1 className="text-3xl font-bold mb-6">Q&A Report</h1>
       <div className="flex flex-col gap-6">
-        <div className="bg-muted px-4 py-2 rounded-md text-muted-foreground font-medium">결과</div>
+        <div className="bg-muted px-4 py-2 rounded-md text-muted-foreground font-medium">종합 평가</div>
         <div className="grid grid-cols-1 gap-6">
           <Card className="flex flex-col h-full">
             <CardHeader className="flex-1 flex flex-col justify-between p-6">
               <div>
-                <h2 className="text-xl font-bold mb-2">{data && data.qs_info && data.qs_info['01'] && data.qs_info['01'].qs_content}
+                <h2 className="text-xl font-bold mb-2">
+                  {data && data.qs_info && data.qs_info['01'] && data.qs_info['01'].qs_content}
                 </h2>
                 <p className="text-muted-foreground">
                   Answer
                 </p>
               </div>
-              <Button variant="outline" size="sm" className="mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() =>
+                  showModal(
+                    data && data.qs_info && data.qs_info['01'] && data.qs_info['01'].qs_content,
+                    "Answer",
+                  )
+                }
+              >
                 View Details
               </Button>
             </CardHeader>
@@ -68,10 +86,20 @@ const Report = () => {
               <div>
                 <h2 className="text-xl font-bold mb-2">Question</h2>
                 <p className="text-muted-foreground">
-                  Answer
+                Answer
                 </p>
               </div>
-              <Button variant="outline" size="sm" className="mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() =>
+                  showModal(
+                    "Question",
+                    "Answer",
+                  )
+                }
+              >
                 View Details
               </Button>
             </CardHeader>
@@ -81,18 +109,105 @@ const Report = () => {
               <div>
                 <h2 className="text-xl font-bold mb-2">Question</h2>
                 <p className="text-muted-foreground">
-                  Answer
+                Answer
                 </p>
               </div>
-              <Button variant="outline" size="sm" className="mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() =>
+                  showModal(
+                    "Question",
+                    "Answer",
+                  )
+                }
+              >
                 View Details
               </Button>
             </CardHeader>
           </Card>
         </div>
       </div>
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>{modalTitle}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="prose">{modalContent}</div>
+            <div className="flex gap-2">
+              <Link href="#" className="flex-1" prefetch={false}>
+                <Button variant="outline">Video URL</Button>
+              </Link>
+              <Link href="#" className="flex-1" prefetch={false}>
+                <Button variant="outline">Audio URL</Button>
+              </Link>
+            </div>
+          </div>
+          <DialogFooter>
+            <div>
+              <Button type="button" onClick={() => setIsModalOpen(false)}>Close</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-    )
+  );
+};
+
+export default Report;
+
+
+    // <div className="w-full max-w-6xl mx-auto py-8 px-4">
+    //   <h1 className="section-title mb-8 xl:mb-16 text-center mx-auto">Report page</h1>
+    //   <div className="flex flex-col gap-6">
+    //     <div className="bg-muted px-4 py-2 rounded-md text-muted-foreground font-medium">결과</div>
+    //     <div className="grid grid-cols-1 gap-6">
+    //       <Card className="flex flex-col h-full">
+    //         <CardHeader className="flex-1 flex flex-col justify-between p-6">
+    //           <div>
+    //             <h2 className="text-xl font-bold mb-2">{data && data.qs_info && data.qs_info['01'] && data.qs_info['01'].qs_content}
+    //             </h2>
+    //             <p className="text-muted-foreground">
+    //               Answer
+    //             </p>
+    //           </div>
+    //           <Button variant="outline" size="sm" className="mt-4">
+    //             View Details
+    //           </Button>
+    //         </CardHeader>
+    //       </Card>
+    //       <Card className="flex flex-col h-full">
+    //         <CardHeader className="flex-1 flex flex-col justify-between p-6">
+    //           <div>
+    //             <h2 className="text-xl font-bold mb-2">Question</h2>
+    //             <p className="text-muted-foreground">
+    //               Answer
+    //             </p>
+    //           </div>
+    //           <Button variant="outline" size="sm" className="mt-4">
+    //             View Details
+    //           </Button>
+    //         </CardHeader>
+    //       </Card>
+    //       <Card className="flex flex-col h-full">
+    //         <CardHeader className="flex-1 flex flex-col justify-between p-6">
+    //           <div>
+    //             <h2 className="text-xl font-bold mb-2">Question</h2>
+    //             <p className="text-muted-foreground">
+    //               Answer
+    //             </p>
+    //           </div>
+    //           <Button variant="outline" size="sm" className="mt-4">
+    //             View Details
+    //           </Button>
+    //         </CardHeader>
+    //       </Card>
+    //     </div>
+    //   </div>
+    // </div>
+  
 //     <section className="min-h-screen pt-12 bg-blue-100">
 //       <div className="container mx-auto">
 //         <h2 className="section-title mb-8 xl:mb-16 text-center mx-auto"> 
@@ -127,8 +242,5 @@ const Report = () => {
 //       </div>
 //     </section>
 //   )
-};
-export default Report;
-
 
 
