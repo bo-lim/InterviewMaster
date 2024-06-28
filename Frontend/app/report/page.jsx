@@ -71,7 +71,7 @@ const Report = () => {
             {data && data.qs_info && data.qs_info['01'] && data.qs_info['01'].qs_content}
 
             </p>
-            <p className="text-lg">보고서는 각 섹션별로 자세한 분석과 평가를 제공하며, 면접자의 성과를 종합적으로 평가합니다.</p>
+            <p className="text-lg">보고서는 각 섹션별로 자세한 분석과 평가를 제공이보림바보하며, 면접자의 성과를 종합적으로 평가합니다.</p>
           </div>
         </div>
       </div>
