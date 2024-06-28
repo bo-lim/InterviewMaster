@@ -54,7 +54,7 @@ const Report = () => {
     <div className="w-full max-w-6xl mx-auto py-8 px-4">
       <h1 className="text-3xl font-bold mb-6">Q&A Report</h1>
       <div className="flex flex-col gap-6">
-        <div className="bg-muted px-4 py-2 rounded-md text-muted-foreground font-medium">종합 평가</div>
+        <div className="bg-muted px-4 py-2 rounded-md text-muted-foreground font-medium">{review}</div>
         <div className="grid grid-cols-1 gap-6">
           <Card className="flex flex-col h-full">
             <CardHeader className="flex-1 flex flex-col justify-between p-6">
