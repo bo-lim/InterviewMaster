@@ -4,7 +4,8 @@ import DevImg from "../../components/Devlmg";
 import { Cookies } from "react-cookie";
 import { getReport, post_review } from "../api";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
-
+import { Card, CardHeader } from "../../components/ui/card"
+import { Button } from "../../components/ui/button"
 const Report = () => {
   const [data, setData] = useState(null);
   const [review, setReview] = useState('');
@@ -43,39 +44,91 @@ const Report = () => {
   }, []); // 의존성 배열이 빈 배열이므로 컴포넌트가 마운트될 때만 실행됩니다
 
   return (
-    <section className="min-h-screen pt-12 bg-blue-100">
-      <div className="container mx-auto">
-        <h2 className="section-title mb-8 xl:mb-16 text-center mx-auto"> 
-          Report
-        </h2>
-        <div className="flex flex-col xl:flex-row">
-          {/* 이미지 */}
-          <div className="hidden xl:flex flex-1 relative">
-            <DevImg 
-              containerStyles='bg-about_shape_dark dark:bg-avout_shape_dark w-[505px] h-[505px] bg-no-repeat relative' 
-              imgSrc='/service/carousel-4.png' 
-            />
-          </div>
-          {/* 텍스트 칸 */}
-          <div className="flex-1 p-6 bg-white rounded-lg shadow-md">
-            <h3 className="text-2xl font-semibold mb-4">보고서 요약</h3>
-            <p className="text-lg mb-4">
-            {review}
-
-            </p>
-            <p className="text-lg">보고서는 각 섹션별로 자세한 분석과 평가를 제공하며, 면접자의 성과를 종합적으로 평가합니다.</p>
-          </div>
-          <div className="flex-1 p-6 bg-white rounded-lg shadow-md">
-            <h3 className="text-2xl font-semibold mb-4">보고서 요약</h3>
-            <p className="text-lg mb-4">
-            {data && data.qs_info && data.qs_info['01'] && data.qs_info['01'].qs_content}
-
-            </p>
-            <p className="text-lg">보고서는 각 섹션별로 자세한 분석과 평가를 제공이보림바보하며, 면접자의 성과를 종합적으로 평가합니다.</p>
-          </div>
+    <div className="w-full max-w-6xl mx-auto py-8 px-4">
+      <h1 className="section-title mb-8 xl:mb-16 text-center mx-auto">Report page</h1>
+      <div className="flex flex-col gap-6">
+        <div className="bg-muted px-4 py-2 rounded-md text-muted-foreground font-medium">결과</div>
+        <div className="grid grid-cols-1 gap-6">
+          <Card className="flex flex-col h-full">
+            <CardHeader className="flex-1 flex flex-col justify-between p-6">
+              <div>
+                <h2 className="text-xl font-bold mb-2">{data && data.qs_info && data.qs_info['01'] && data.qs_info['01'].qs_content}
+                </h2>
+                <p className="text-muted-foreground">
+                  Answer
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="mt-4">
+                View Details
+              </Button>
+            </CardHeader>
+          </Card>
+          <Card className="flex flex-col h-full">
+            <CardHeader className="flex-1 flex flex-col justify-between p-6">
+              <div>
+                <h2 className="text-xl font-bold mb-2">Question</h2>
+                <p className="text-muted-foreground">
+                  Answer
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="mt-4">
+                View Details
+              </Button>
+            </CardHeader>
+          </Card>
+          <Card className="flex flex-col h-full">
+            <CardHeader className="flex-1 flex flex-col justify-between p-6">
+              <div>
+                <h2 className="text-xl font-bold mb-2">Question</h2>
+                <p className="text-muted-foreground">
+                  Answer
+                </p>
+              </div>
+              <Button variant="outline" size="sm" className="mt-4">
+                View Details
+              </Button>
+            </CardHeader>
+          </Card>
         </div>
       </div>
-    </section>
-  )
+    </div>
+    )
+//     <section className="min-h-screen pt-12 bg-blue-100">
+//       <div className="container mx-auto">
+//         <h2 className="section-title mb-8 xl:mb-16 text-center mx-auto"> 
+//           Report
+//         </h2>
+//         <div className="flex flex-col xl:flex-row">
+//           {/* 이미지 */}
+//           <div className="hidden xl:flex flex-1 relative">
+//             <DevImg 
+//               containerStyles='bg-about_shape_dark dark:bg-avout_shape_dark w-[505px] h-[505px] bg-no-repeat relative' 
+//               imgSrc='/service/carousel-4.png' 
+//             />
+//           </div>
+//           {/* 텍스트 칸 */}
+//           <div className="flex-1 p-6 bg-white rounded-lg shadow-md">
+//             <h3 className="text-2xl font-semibold mb-4">보고서 요약</h3>
+//             <p className="text-lg mb-4">
+//             {review}
+
+//             </p>
+//             <p className="text-lg">보고서는 각 섹션별로 자세한 분석과 평가를 제공하며, 면접자의 성과를 종합적으로 평가합니다.</p>
+//           </div>
+//           <div className="flex-1 p-6 bg-white rounded-lg shadow-md">
+//             <h3 className="text-2xl font-semibold mb-4">보고서 요약</h3>
+//             <p className="text-lg mb-4">
+//             {data && data.qs_info && data.qs_info['01'] && data.qs_info['01'].qs_content}
+
+//             </p>
+//             <p className="text-lg">보고서는 각 섹션별로 자세한 분석과 평가를 제공이보림바보하며, 면접자의 성과를 종합적으로 평가합니다.</p>
+//           </div>
+//         </div>
+//       </div>
+//     </section>
+//   )
 };
 export default Report;
+
+
+
