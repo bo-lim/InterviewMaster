@@ -2,18 +2,18 @@
 import React, { useEffect, useState } from "react";
 import DevImg from "../../components/Devlmg";
 import { Cookies } from "react-cookie";
-import { getReport, post_review } from "../api";
+import { createPresignedUrlWithClient, getReport, post_review } from "../api";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardHeader } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
 import Link from "next/link";
+import ReactPlayer from 'react-player';
+
 
 
 const Report = () => {
-//임시 test
-const user_id = "ant67410@gmail.com"; // 쿠키에서 user_id 가져오기
-const itv_no = "6911b9a58cf54d31bbec08b943a49651_240628_027";
+
 
   const [data, setData] = useState(null);
   const [review, setReview] = useState('');
@@ -21,15 +21,28 @@ const itv_no = "6911b9a58cf54d31bbec08b943a49651_240628_027";
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalContent, setModalContent] = useState('');
+  
   const cookies = new Cookies();
+  const user_id = "ant67410@gmail.com"; // 쿠키에서 user_id 가져오기
+  const itv_no = "6911b9a58cf54d31bbec08b943a49651_240628_027"; 
   // const user_id = cookies.get('user_id'); // 쿠키에서 user_id 가져오기
-  // const itv_no = cookies.get('itv_no');  // itv_no 값을 정의해야 합니다
+  // // const itv_no = cookies.get('itv_no');  // itv_no 값을 정의해야 합니다
+  
+  const [video, setVideo] = useState('');
+  const [audio, setAudio] = useState('');
+  const [fileContent, setFileContent] = useState('');
+
 
   const showModal = (title, content) => {
     setModalTitle(title);
     setModalContent(content);
     setIsModalOpen(true);
   };
+
+  const audioButton = () => {
+    const player = new Audio(audio);
+    player.play()
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,6 +57,15 @@ const itv_no = "6911b9a58cf54d31bbec08b943a49651_240628_027";
           const response = await getReport(user_id, itv_no);
           setData(response.itv_info[itv_no]);
           console.log(response.itv_info[itv_no]);
+          const video1 = await createPresignedUrlWithClient(response.itv_info[itv_no].qs_info['01'].qs_video_url)
+          setVideo(video1)
+          const audio1 = await createPresignedUrlWithClient(response.itv_info[itv_no].qs_info['01'].qs_audio_url)
+          setAudio(audio1)
+          const file1 = await createPresignedUrlWithClient(response.itv_info[itv_no].qs_info['01'].qs_text_url)
+          const res = await fetch(file1);
+          const tmp_text = await res.text();
+          console.log(tmp_text)
+          setFileContent(tmp_text)
         } else {
           console.error("User ID or ITV number is not found");
         }
@@ -112,10 +134,19 @@ const itv_no = "6911b9a58cf54d31bbec08b943a49651_240628_027";
           <div className="prose">{modalContent}</div>
           <div className="flex gap-2">
             <Link href="#" className="flex-1" prefetch={false}>
+            <ReactPlayer className="w-full h-auto mx-auto"
+                url={video}
+                height="540px"
+                muted={true}
+                loop={true}
+                playing={true}
+                />
+                {fileContent}
               <Button variant="outline">Video URL</Button>
             </Link>
             <Link href="#" className="flex-1" prefetch={false}>
-              <Button variant="outline">Audio URL</Button>
+
+            <Button variant="outline" onClick={audioButton}>Audio URL</Button>
             </Link>
           </div>
         </div>
