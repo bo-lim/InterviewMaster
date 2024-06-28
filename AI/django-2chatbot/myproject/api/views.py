@@ -587,9 +587,6 @@ class reviewAPI(APIView):
     def post(self, request):
         itv_no = request.data.get('itv_no')
         
-        if 'thread_id' not in request.session:
-            return Response({'response': 'No thread'}, status=400)
-        
         thread = client.beta.threads.create()
         request.session['thread_id'] = thread.id
 
@@ -632,61 +629,3 @@ class reviewAPI(APIView):
             )
             time.sleep(0.5)
         return run
-    
-    # def post(self, request):
-    #     itv_no = request.data.get('itv_no')
-    #     # question_number = request.data.get('question_number')
-    #     # stop = request.data.get('stop')
-                      
-    #     # history = []
-    #     # if coverletter:
-    #     #     history.append(coverletter)
-    #     # if initial_question:
-    #     #     history.append(initial_question)
-    #     # if get_history_redis('itv-no',"answer-1"):
-    #     #     for i in range(1,question_number-1):
-    #     #         history.append(get_history_redis('itv-no',f"answer-{i}"))
-
-    #     # if get_history_redis('itv-no',"question-2"):
-    #     #     for i in range(2,question_number):
-    #     #         history.append(get_history_redis('itv-no',f"question-{i}"))
-
-    #     # combined_history = ''.join(history)
-
-    #     combined_history =  str(getall_history_redis(itv_no))
-
-    #     print("Complete history from Redis:")
-    #     print(combined_history)
-
-    #     prompt = f"{combined_history}" 
-
-    #     ## feedback 생성
-    #     message = bedrock_client.messages.create(
-    #         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-    #         max_tokens=4096,
-    #         temperature=1,
-    #         system="역할:\n면접 대화를 기반으로 결과 Report를 작성\n\n맥락:\n- 목표: 사용자가 자기소개서를 기반으로 면접을 준비할 수 있도록 돕는 것.\n- 대상 고객: 자기소개서를 기반으로 면접 준비를 원하는 구직자.\n\n지시사항:\n1. answer가 실제 면접 대상자가 대답한거고, question이 면접 질문이야, 그리고 coverletter가 자기소개서와 직무야.\n2. 4가지 평가 항목에 따라서 퍼센트와 설명을 넣어 평가를 해주세요.\n\"관련 경험 (Relevant Experience): 90%\n문제 해결 능력 (Problem-Solving Skills): 85%\n의사소통 능력 (Communication Skills): 80%\n주도성 (Initiative): 85%\n설명:\n관련 경험 (Relevant Experience): 인터뷰 대상자는 복잡한 인프라 문제를 해결해야 했던 특정 상황을 설명하며 관련 경험을 입증했습니다.\n문제 해결 능력 (Problem-Solving Skills): 인터뷰 대상자는 문제의 근본 원인을 파악하고 이를 해결하기 위해 주도적으로 행동하는 강력한 문제 해결 능력을 보여주었습니다.\n의사소통 능력 (Communication Skills): 인터뷰 대상자는 명확한 의사소통과 모든 상호작용 및 변경 사항에 대한 기록 유지의 중요성을 강조하며, 좋은 의사소통 능력을 보여주었습니다.\n주도성 (Initiative): 인터뷰 대상자는 상황을 해결하고 시정하기 위해 주도적으로 행동하여 높은 수준의 주도성을 보여주었습니다.\"\n\n2. STAR 기법에 따라서 아래와 같은 평가를 해주세요.\nSTAR 기법은 면접이나 평가에서 자신의 경험을 구조화하여 효과적으로 전달하는 방법론입니다. STAR는 Situation (상황), Task (과제), Action (행동), Result (결과)의 약자로, 다음과 같이 네 가지 단계로 나눌 수 있습니다.\n\"상황 (Situation): \"저는 소화기내과 병동 실습 중 간암을 진단받은 환자분께서 수술 이후에도 건강 관리를 하지 않는 모습을 관찰했습니다.\"\n\n과제 (Task): \"저의 과제는 환자분이 건강 관리를 하지 않는 이유를 파악하고, 효과적인 건강 관리 방법을 교육하는 것이었습니다.\"\n\n행동 (Action): \"저는 치료적 의사소통을 활용하여 환자분의 걱정을 이야기하도록 유도했습니다. 환자분은 퇴원 후 음주와 흡연을 끊지 못할 것 같다고 하셨습니다. 이에 저는 간의 구조 및 역할, 수술 후 증상과 주의사항에 대해 설명한 교육자료를 제작하였습니다. 또한, 금연과 금주의 필요성을 교육하고 지역사회센터를 소개했습니다.\"\n\n결과 (Result): \"환자분은 자신의 건강 관리에 대해 더 많은 관심을 가지게 되었고, 금연과 금주를 결심하게 되었습니다. 또한, 지역사회센터의 지원을 받아 퇴원 후에도 지속적인 건강 관리를 할 수 있었습니다.\" \"\n\n3. 평가를 통해 최종적으로 종합 점수를 내어 점수와 함께 응원 문구 보내줘.\n\n과거 대화:\n- \n\n제약사항:\n- 모든 질문에 한국어로 답변합니다.\n- 대화 내내 자세한 설명이 들어간 내용을 유지합니다.\n- Output format을 항상 지켜주세요. \n\nOutput Indicator (결과값 지정): \nOutput format: JSON\n\nOutput fields:\n- result_report (string): 생성된 새로운 면접 질문.\n\n출력 예시:\n\n{\n  \"result_report\": \"\",\n}",
-    #         messages=[
-    #             {
-    #                 "role": "user",
-    #                 "content": [
-    #                     {
-    #                         "type": "text",
-    #                         "text": prompt,
-    #                     }
-    #                 ]
-    #             }
-    #         ]
-    #     )
-    #     response_text = message.content[0].text
-
-    #     try:
-    #         response = json.loads(response_text).get("result_report")
-    #         # print("Response:", response)
-
-    #     except json.JSONDecodeError as e:
-    #         # print("JSONDecodeError:", e)
-    #         response = None
-
-    #     # redis_client.delete('itv_no')
-    #     return Response({'response': response})
