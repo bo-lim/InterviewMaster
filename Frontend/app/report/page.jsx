@@ -9,8 +9,12 @@ import { Button } from "../../components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
 import Link from "next/link";
 import ReactPlayer from 'react-player';
-
-
+import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
+import { fromJSON } from "postcss";
+import {
+  getSignedUrl,
+  S3RequestPresigner,
+} from "@aws-sdk/s3-request-presigner";
 
 const Report = () => {
 
