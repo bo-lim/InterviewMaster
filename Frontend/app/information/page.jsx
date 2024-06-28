@@ -30,13 +30,9 @@ const Information = () => {
 
         console.log(response);
         setDisabled(false);
-        //console.log(response.data.response);
-        // console.log(response.thread_id);
-
-        // // 쿠키에 데이터 저장
+        // 쿠키에 데이터 저장
         cookies.set('simul_info', response.response);
         cookies.set('simul_ques', response.response);
-        // cookies.set('thread_id', response.thread_id);
       } catch (error) {
         console.log(error);
       }
