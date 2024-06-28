@@ -19,16 +19,12 @@ const Login = () => {
     console.log(url)
     window.location.href = url;
 
-  //  cookies.set('user_id',"ygang4546@gmail.com");
+  
      // 임시 로그인
-    //const response = await getUserList("ygang4546@gmail.com");
+    // const response = await getUserList("ygang4546@gmail.com");
     // cookies.set('user_id', response.user_id);
-    // print("in")
-    
-    // console.log(response)
-    // print("out")
-    // console.log(response.data)
-    // print("out2")
+  
+
   }
 
   return (

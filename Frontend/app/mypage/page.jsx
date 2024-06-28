@@ -77,7 +77,7 @@ const Mypage = () => {
 
       const response = await postLogout(logout_formData);   
       console.log(response);   
-      if (response.data.logout === 'success') {
+      if (response.logout === 'success') {
         cookies.remove('access_token'); // Remove access token from cookies
         cookies.remove('user_id'); // Remove user_id from cookies
         console.log("Logged out successfully");
