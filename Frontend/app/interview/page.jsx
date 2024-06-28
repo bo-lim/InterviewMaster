@@ -2,7 +2,7 @@
 import React, { useEffect, useState,useCallback } from "react";
 import { checkAudioCodecPlaybackSupport, useRecordWebcam } from 'react-record-webcam';
 import { AudioRecorder,useAudioRecorder } from 'react-audio-voice-recorder';
-import ReactPlayer from 'react-player'
+import ReactPlayer from 'react-player';
 import { Cookies } from "react-cookie";
 import { redirect, useRouter } from 'next/navigation'; // next/navigation에서 useRouter를 가져옴
 import { Button } from "@/components/ui/button";
@@ -84,7 +84,7 @@ const Interview = () => {
       if (!recording) return;
       await openCamera(recording.id);
       await startRecording(recording.id);
-      await muteRecording(recording.id);
+      // await muteRecording(recording.id);
       
       
       await new Promise(resolve => setTimeout(resolve, 600000));

@@ -1,7 +1,12 @@
 "use server";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
 import { fromJSON } from "postcss";
+import {
+  getSignedUrl,
+  S3RequestPresigner,
+} from "@aws-sdk/s3-request-presigner";
+
 const bucket = process.env.BUCKET_NAME;
 const s3_client = new S3Client({
     region: 'ap-northeast-2',
@@ -17,6 +22,11 @@ const polly_client = new PollyClient({
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
   },
 });
+
+export const createPresignedUrlWithClient = async (key) => {
+  const command = new GetObjectCommand({ Bucket: bucket, Key: key.replace("s3://simulation-userdata/", "")});
+  return getSignedUrl(s3_client, command, { expiresIn: 3600 });
+};
 
 export const post_review = async(formData) => {
   const itv_no = formData.get("itv_no");
