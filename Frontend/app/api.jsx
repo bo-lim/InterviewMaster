@@ -295,7 +295,12 @@ export async function postLogout(formData) {
   try {
     // token 전송
     const response = await fetch(`${process.env.GET_API}/act/kakao/logout`, { 
-      access_token: access_token });
+      method: 'POST',
+      headers: {"Content-Type": "application/json",},
+      body: JSON.stringify({
+        access_token: access_token
+      }),
+    });
    
       if (!response.ok) {
         const errorDetails = await response.text();

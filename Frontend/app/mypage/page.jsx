@@ -83,7 +83,7 @@ const Mypage = () => {
         console.log("Logged out successfully");
         router.push('/login'); // Redirect to login page after logout
       } else {
-        console.error("Logout failed:", response.data); // Log if logout is not successful
+        console.error("Logout failed:", response); // Log if logout is not successful
       }
     } catch (error) {
       console.error("Logout failed:", error.message);
