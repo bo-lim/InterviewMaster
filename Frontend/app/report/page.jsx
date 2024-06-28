@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import DevImg from "../../components/Devlmg";
 import { Cookies } from "react-cookie";
-import { getReport } from "../api";
+import { getReport, post_review } from "../api";
 import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
 
 const Report = () => {
