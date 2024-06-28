@@ -192,21 +192,21 @@ const Interview = () => {
       //   })
         const chat_formData = new FormData();
         chat_formData.append('text_url',text_path);
-        chat_formData.append('thread_id',cookies.get('thread_id'));
+        chat_formData.append('itv_no',cookies.get('itv_no'));
+        chat_formData.append('question_number',count);
         const chat_response = await post_chat(chat_formData);
         console.log(chat_response);
-        console.log(chat_response.stop)
+        // console.log(chat_response.stop)
         // console.log({
         //   text_url: response.data.s3_file_path
         // });
         setchatQ(chat_response.response);
         //router.push('/report');
-        if (chat_response.stop === 1) {
+        if (count === 3) {
           router.push('/report')
         }
         else{
           console.log('다음 질문');
-          await new Promise(resolve => setTimeout(resolve, 3000));
           console.log("next 전");
           console.log(chatQ);
           setFrontQ(chat_response.response);

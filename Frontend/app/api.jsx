@@ -18,18 +18,46 @@ const polly_client = new PollyClient({
   },
 });
 
-export const post_chat = async(formData) => {
-  const text_url = formData.get("text_url");
-  const thread_id = formData.get("thread_id");
+export const post_review = async(formData) => {
+  const itv_no = formData.get("itv_no");
 
   try {
     // user_id 전송
-    const response = await fetch(`${process.env.CHAT_POST_API}/chat/`, {
+    // `${process.env.CHAT_POST_API}/chat/`
+    const response = await fetch(`http://192.168.0.4:8888/question/review/`, {
+      method: 'POST',
+      headers: {"Content-Type": "application/json",},
+      body: JSON.stringify({
+        itv_no: itv_no
+      }),
+    });
+    if (!response.ok) {
+        const errorDetails = await response.text();
+        console.error('Error details:', errorDetails);
+        throw new Error("Failed to post review");
+    }
+    return response.json();
+  } catch (error) {
+    console.error("Error:", error);
+    return "Failed to post review";
+  }
+}
+
+export const post_chat = async(formData) => {
+  const text_url = formData.get("text_url");
+  const itv_no = formData.get("itv_no");
+  const question_number = formData.get("question_number");
+
+  try {
+    // user_id 전송
+    // `${process.env.CHAT_POST_API}/chat/`
+    const response = await fetch(`http://192.168.0.4:8888/question/chat/`, {
       method: 'POST',
       headers: {"Content-Type": "application/json",},
       body: JSON.stringify({
         text_url: text_url,
-        thread_id: thread_id,
+        itv_no: itv_no,
+        question_number: question_number
       }),
     });
     if (!response.ok) {
@@ -222,14 +250,17 @@ export async function postItv(formData) {
 export async function postCV(formData) {
   const coverletter_url = formData.get("coverletter_url");
   const position = formData.get("position");
+  const itv_no = formData.get("itv_no");
   try {
     // user_id 전송
-    const response = await fetch(`${process.env.CHAT_POST_API}/coverletter/`, {
+    //`${process.env.CHAT_POST_API}/coverletter/`
+    const response = await fetch(`http://192.168.0.4:8888/question/coverletter/`, {
       method: 'POST',
       headers: {"Content-Type": "application/json",},
       body: JSON.stringify({
         coverletter_url: coverletter_url,
-        position: position
+        position: position,
+        itv_no: itv_no
       }),
     });
 
