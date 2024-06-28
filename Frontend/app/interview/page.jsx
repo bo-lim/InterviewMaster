@@ -179,7 +179,7 @@ const Interview = () => {
     setCount(count + 1);
   } catch (error) {
     console.log(error);
-    }
+  }
 
     //Q1 끝난 후 Q1에 대한 사용자 답변 text S3 url 꼬리질문 api에 post
 
@@ -193,7 +193,7 @@ const Interview = () => {
         const chat_formData = new FormData();
         chat_formData.append('text_url',text_path);
         chat_formData.append('itv_no',cookies.get('itv_no'));
-        chat_formData.append('question_number',count);
+        chat_formData.append('question_number',count + 1);
         const chat_response = await post_chat(chat_formData);
         console.log(chat_response);
         // console.log(chat_response.stop)
