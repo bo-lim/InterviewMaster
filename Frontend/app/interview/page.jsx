@@ -149,15 +149,11 @@ const Interview = () => {
     const user_uuid = cookies.get('user_uuid');
     //get itv_cnt api 호출
     
-
     setAudio_key(`${user_uuid}/${itv_cnt}/${identifier}_audio.mp3`);
     setVideo_key(`${user_uuid}/${itv_cnt}/${identifier}_video.webm`);
     recorderControls.stopRecording();
     stopAndUpload(recording_id);
-    setMessage(null);
-
-
-  
+    setMessage(null);  
   };
   const fetchSTT = async () => {
     setLoadingMessage("다음 질문 생성 중입니다. 잠시 기다려주세요."); // 로딩 메시지 설정
@@ -239,10 +235,7 @@ const Interview = () => {
 
   };
 
-  const clickNextButton = useCallback(() => {
-    setFrontQ(chatQ);
-    polly(chatQ);
-  }, [chatQ]);
+
 
   useEffect(() => {
   if (start == 0) {
@@ -257,12 +250,7 @@ const Interview = () => {
       <div className="my-8">
       <div className="flex items-center gap-4">
         <h2 className="text-3xl font-semibold">면접 질문</h2>
-        <button
-          onClick={() => clickStopButton(recording.id)}
-          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        >
-          END
-        </button>
+       
       </div>
         <div className="bg-gray-100 p-4 mb-8">
           <p className="text-lg">{frontQ}</p>
