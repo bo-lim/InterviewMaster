@@ -214,7 +214,6 @@ const Interview = () => {
         setchatQ(chat_response.response);
         //router.push('/report');
         if (count === 3) {
-          await stopAndUpload(recording_id);
           router.push('/report')
         }
         else{
@@ -236,7 +235,10 @@ const Interview = () => {
 
   };
 
-
+  const clickNextButton = useCallback(() => {
+    setFrontQ(chatQ);
+    polly(chatQ);
+  }, [chatQ]);
 
   useEffect(() => {
   if (start == 0) {

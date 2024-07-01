@@ -166,7 +166,7 @@ export const save_audio = async(formData) => {
 
 export const save_video = async(formData) => {
   const video_key = formData.get('video_key')
-  const blob = await formData.get('blob')
+  const blob = formData.get('blob')
   const arrayBuffer = await blob.arrayBuffer();
 
   const command = new PutObjectCommand({
