@@ -150,8 +150,8 @@ const Interview = () => {
     //get itv_cnt api 호출
     
 
-    setAudio_key(`${user_uuid}/${itv_cnt}/${identifier}/audio.mp3`);
-    setVideo_key(`${user_uuid}/${itv_cnt}/${identifier}/video.webm`);
+    setAudio_key(`${user_uuid}/${itv_cnt}/${identifier}_audio.mp3`);
+    setVideo_key(`${user_uuid}/${itv_cnt}/${identifier}_video.webm`);
     recorderControls.stopRecording();
     stopAndUpload(recording_id);
     setMessage(null);

@@ -27,10 +27,10 @@ const Report = () => {
   const [modalContent, setModalContent] = useState('');
   
   const cookies = new Cookies();
-  const user_id = "ant67410@gmail.com"; // 쿠키에서 user_id 가져오기
-  const itv_no = "6911b9a58cf54d31bbec08b943a49651_240628_027"; 
-  // const user_id = cookies.get('user_id'); // 쿠키에서 user_id 가져오기
-  // const itv_no = cookies.get('itv_no');  // itv_no 값을 정의해야 합니다
+  // const user_id = "ant67410@gmail.com"; // 쿠키에서 user_id 가져오기
+  // const itv_no = "6911b9a58cf54d31bbec08b943a49651_240628_027"; 
+  const user_id = cookies.get('user_id'); // 쿠키에서 user_id 가져오기
+  const itv_no = cookies.get('itv_no');  // itv_no 값을 정의해야 합니다
   
   const [video, setVideo] = useState('');
   const [audio, setAudio] = useState('');
