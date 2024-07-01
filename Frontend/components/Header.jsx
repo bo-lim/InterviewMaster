@@ -5,13 +5,13 @@ import Logo from './Logo';
 import ThemeToggler from "./ThemeToggler"
 import Nav from './Nav';
 import MobileNav from "./MobileNav";
-import { RedirectType, usePathname } from "next/navigation";
+import { useRouter, RedirectType, usePathname } from "next/navigation";
 import { PathnameContext } from "next/dist/shared/lib/hooks-client-context.shared-runtime";
 
 const Header =() => {
   const [header, setHeader] = useState(false);
   const pathname = usePathname();
-
+  const router = useRouter();
   useEffect(() => {
     const scrollYPos = window.addEventListener('scroll', () => {
       window.scrollY > 50 ? setHeader(true): setHeader(false);
@@ -20,6 +20,10 @@ const Header =() => {
     return () => window.removeEventListener('scroll', scrollYPos);
   });
 
+    // interview 페이지에서는 Navbar를 숨김
+    if (router.pathname === '/interview') {
+      return null;
+    }
   return (
     // 스크롤 내릴 때, navbar그림자
     <header

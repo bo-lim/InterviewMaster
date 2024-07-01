@@ -12,7 +12,7 @@ const MobileNav = () => {
         <AlignJustify className='cursor-pointer' />
       </SheetTrigger>
       <SheetContent>
-        <div>
+        <div className='bg-white'> {/* 배경색을 흰색으로 변경 */}
           <div className='flex flex-col items-center gap-y-32 bg-transparent'>
             <Logo />
             <Nav 
@@ -22,7 +22,7 @@ const MobileNav = () => {
         </div>
       </SheetContent>
     </Sheet>
-    )
+  )
 }
 
-export default MobileNav
+export default MobileNav;

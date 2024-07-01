@@ -9,9 +9,12 @@ import { Button } from "@/components/ui/button";
 import { ReloadIcon } from "@radix-ui/react-icons"
 import { create_polly, post_chat, post_new_qs, post_stt, save_audio, save_video } from "../api";
 import { Camera } from "lucide-react";
+import useConfirmPageLeave from "@/hooks/useConfirmPageLeave";
 // import useBlockPageNavigation from "@/hooks/useRouteChangeBlocking";
 
 const Interview = () => {
+  useConfirmPageLeave(); // 훅 사용
+
   const cookies = new Cookies();
   const [start, setStart] = useState(0);
   const [question,setQuestion] = useState(cookies.get('simul_info'));
@@ -23,7 +26,18 @@ const Interview = () => {
   const [disabled, setDisabled] = useState(true);
   const [countdown, setCountdown] = useState(null);
   // const { isModalOpen, confirmNavigation, cancelNavigation, routePath } = useBlockPageNavigation();
+  
+  //현재 날짜 추가
+  const now = new Date(); // 현재 날짜 및 시간을 반환
+  const year = now.getFullYear().toString().slice(-2); // 연도의 마지막 두 자리
+  const month = ('0' + (now.getMonth() + 1)).slice(-2); // 월 (0-11), 따라서 1을 더해줌
+  const day = ('0' + now.getDate()).slice(-2); // 일
+  const hours = ('0' + now.getHours()).slice(-2); // 시간 (24시간 형식)
+  const minutes = ('0' + now.getMinutes()).slice(-2); // 분
+  const seconds = ('0' + now.getSeconds()).slice(-2); // 초
+  const randomNum = ('000' + Math.floor(Math.random() * 1000)).slice(-3); // 000-999 사이의 무작위 숫자
 
+  const identifier = `${year}${month}${day}_${hours}${minutes}${seconds}_${randomNum}`;
 
   const [loadingMessage, setLoadingMessage] = useState(null); // 로딩 메시지 상태 추가
   const [nextloadingMessage, setNextLoadingMessage] = useState(""); // 로딩 메시지 상태 추가
@@ -134,9 +148,10 @@ const Interview = () => {
   const clickStopButton = (recording_id) => {
     const user_uuid = cookies.get('user_uuid');
     //get itv_cnt api 호출
-   
-    setAudio_key(`${user_uuid}/${itv_cnt}/audio.mp3`);
-    setVideo_key(`${user_uuid}/${itv_cnt}/video.webm`);
+    
+
+    setAudio_key(`${user_uuid}/${itv_cnt}/${identifier}/audio.mp3`);
+    setVideo_key(`${user_uuid}/${itv_cnt}/${identifier}/video.webm`);
     recorderControls.stopRecording();
     stopAndUpload(recording_id);
     setMessage(null);
@@ -240,7 +255,15 @@ const Interview = () => {
     
     <div className="container mx-auto">
       <div className="my-8">
-        <h2 className="text-3xl font-semibold mb-4">면접 질문</h2>
+      <div className="flex items-center gap-4">
+        <h2 className="text-3xl font-semibold">면접 질문</h2>
+        <button
+          onClick={() => clickStopButton(recording.id)}
+          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          END
+        </button>
+      </div>
         <div className="bg-gray-100 p-4 mb-8">
           <p className="text-lg">{frontQ}</p>
         </div>

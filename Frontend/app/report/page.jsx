@@ -30,7 +30,7 @@ const Report = () => {
   const user_id = "ant67410@gmail.com"; // 쿠키에서 user_id 가져오기
   const itv_no = "6911b9a58cf54d31bbec08b943a49651_240628_027"; 
   // const user_id = cookies.get('user_id'); // 쿠키에서 user_id 가져오기
-  // // const itv_no = cookies.get('itv_no');  // itv_no 값을 정의해야 합니다
+  // const itv_no = cookies.get('itv_no');  // itv_no 값을 정의해야 합니다
   
   const [video, setVideo] = useState('');
   const [audio, setAudio] = useState('');
@@ -61,15 +61,38 @@ const Report = () => {
           const response = await getReport(user_id, itv_no);
           setData(response.itv_info[itv_no]);
           console.log(response.itv_info[itv_no]);
-          const video1 = await createPresignedUrlWithClient(response.itv_info[itv_no].qs_info['01'].qs_video_url)
-          setVideo(video1)
-          const audio1 = await createPresignedUrlWithClient(response.itv_info[itv_no].qs_info['01'].qs_audio_url)
-          setAudio(audio1)
-          const file1 = await createPresignedUrlWithClient(response.itv_info[itv_no].qs_info['01'].qs_text_url)
-          const res = await fetch(file1);
-          const tmp_text = await res.text();
-          console.log(tmp_text)
-          setFileContent(tmp_text)
+
+          const qs_info = response.itv_info[itv_no].qs_info;
+
+          // 비디오, 오디오, 텍스트 파일을 비동기적으로 가져옴
+          const fetchMediaData = async (key) => {
+            const videoUrl = await createPresignedUrlWithClient(qs_info[key].qs_video_url);
+            const audioUrl = await createPresignedUrlWithClient(qs_info[key].qs_audio_url);
+            const textUrl = await createPresignedUrlWithClient(qs_info[key].qs_text_url);
+
+            const textResponse = await fetch(textUrl);
+            const textContent = await textResponse.text();
+
+            return { videoUrl, audioUrl, textContent };
+          };
+
+          const keys = Object.keys(qs_info);
+          const promises = keys.map(key => fetchMediaData(key));
+          const results = await Promise.all(promises);
+
+          const newVideos = {};
+          const newAudios = {};
+          const newFileContents = {};
+
+          keys.forEach((key, index) => {
+            newVideos[key] = results[index].videoUrl;
+            newAudios[key] = results[index].audioUrl;
+            newFileContents[key] = results[index].textContent;
+          });
+
+          setVideo(newVideos);
+          setAudio(newAudios);
+          setFileContent(newFileContents);
         } else {
           console.error("User ID or ITV number is not found");
         }
@@ -80,7 +103,7 @@ const Report = () => {
     };
 
     fetchData();
-  }, [user_id, itv_no]); // user_id와 itv_no가 변경될 때마다 실행됩니다
+  }, [user_id, itv_no]);
 
   if (error) {
     return <div>Error: {error}</div>;
@@ -97,6 +120,8 @@ const Report = () => {
         <h2 className="text-xl font-bold mb-2">
               Question {key} <br />
               {data.qs_info[key].qs_content}
+              <div className="bg-muted px-4 py-2 rounded-md text-muted-foreground font-medium">
+              {fileContent[key] && <div>{fileContent[key]}</div>}</div>
             </h2>
           <p className="text-muted-foreground">
             
@@ -109,7 +134,6 @@ const Report = () => {
           onClick={() =>
             showModal(
               data.qs_info[key].qs_content,
-              "Answer",
             )
           }
         >
@@ -119,38 +143,29 @@ const Report = () => {
     </Card>
   ));
   
-
-  return (
-    <div className="w-full max-w-6xl mx-auto py-8 px-4">
-    <h1 className="text-3xl font-bold mb-6">Q&A Report</h1>
-    <div className="flex flex-col gap-6">
-      <div className="bg-muted px-4 py-2 rounded-md text-muted-foreground font-medium">{review}</div>
-      <div className="grid grid-cols-1 gap-6">
-        {questionCards}
-      </div>
-    </div>
-    <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
+  const questionModal = Object.keys(data.qs_info).map((key) => (
+    <Dialog key={key} open={isModalOpen} onOpenChange={setIsModalOpen}>
+    <DialogContent className="sm:max-w-[60vw] max-w-screen-lg max-h-screen-lg">
+    <DialogHeader>
           <DialogTitle>{modalTitle}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="prose">{modalContent}</div>
           <div className="flex gap-2">
             <Link href="#" className="flex-1" prefetch={false}>
-            <ReactPlayer className="w-full h-auto mx-auto"
-                url={video}
-                height="540px"
-                muted={true}
-                loop={true}
-                playing={true}
+            {video[key] && 
+                <ReactPlayer
+                  url={video[key]}
+                  controls
+                  height="400px"
                 />
-                {fileContent}
-              <Button variant="outline">Video URL</Button>
+              }
+              {fileContent[key] && <div>{fileContent[key]}</div>}
+              {/* <Button variant="outline">Video URL</Button> */}
             </Link>
             <Link href="#" className="flex-1" prefetch={false}>
 
-            <Button variant="outline" onClick={audioButton}>Audio URL</Button>
+            {/* <Button variant="outline" onClick={audioButton}>Audio URL</Button> */}
             </Link>
           </div>
         </div>
@@ -161,6 +176,18 @@ const Report = () => {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  ));
+
+  return (
+    <div className="w-full max-w-6xl mx-auto py-8 px-4">
+    <h1 className="text-3xl font-bold mb-6">Q&A Report</h1>
+    <div className="flex flex-col gap-6">
+      <div className="bg-muted px-4 py-2 rounded-md text-muted-foreground font-medium">{review}</div>
+      <div className="grid grid-cols-1 gap-6">
+        {questionCards}
+      </div>
+    </div>
+    {questionModal}
   </div>
 );
 };
