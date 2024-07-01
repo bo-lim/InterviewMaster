@@ -113,7 +113,7 @@ const Interview = () => {
     const video_formData = new FormData()
     video_formData.append('video_key',video_key)
     video_formData.append('blob',recorded.blob)
-    await save_video(video_formData);
+    save_video(video_formData);
     // await cancelRecording(recording_id);
     await closeCamera(recording_id);
     await cancelRecording(recording_id);
@@ -214,6 +214,7 @@ const Interview = () => {
         setchatQ(chat_response.response);
         //router.push('/report');
         if (count === 3) {
+          await stopAndUpload(recording_id);
           router.push('/report')
         }
         else{
