@@ -27,8 +27,8 @@ const Report = () => {
   const [modalContent, setModalContent] = useState('');
   
   const cookies = new Cookies();
-  // const user_id = "ant67410@gmail.com"; // 쿠키에서 user_id 가져오기
-  // const itv_no = "6911b9a58cf54d31bbec08b943a49651_240628_027"; 
+  // const user_id = "yejin8329@daum.net"; // 쿠키에서 user_id 가져오기
+  // const itv_no = "7054ab6aa4b4465da144b4aca94a1b19_240701_019"; 
   const user_id = cookies.get('user_id'); // 쿠키에서 user_id 가져오기
   const itv_no = cookies.get('itv_no');  // itv_no 값을 정의해야 합니다
   
@@ -120,6 +120,7 @@ const Report = () => {
         <h2 className="text-xl font-bold mb-2">
               Question {key} <br />
               {data.qs_info[key].qs_content}
+    
               <div className="bg-muted px-4 py-2 rounded-md text-muted-foreground font-medium">
               {fileContent[key] && <div>{fileContent[key]}</div>}</div>
             </h2>
@@ -134,6 +135,12 @@ const Report = () => {
           onClick={() =>
             showModal(
               data.qs_info[key].qs_content,
+              <div><ReactPlayer
+                  url={video[key]}
+                  controls
+                  height="400px"
+                />{fileContent[key]}</div>
+          
             )
           }
         >
@@ -152,21 +159,6 @@ const Report = () => {
         <div className="grid gap-4 py-4">
           <div className="prose">{modalContent}</div>
           <div className="flex gap-2">
-            <Link href="#" className="flex-1" prefetch={false}>
-            {video[key] && 
-                <ReactPlayer
-                  url={video[key]}
-                  controls
-                  height="400px"
-                />
-              }
-              {fileContent[key] && <div>{fileContent[key]}</div>}
-              {/* <Button variant="outline">Video URL</Button> */}
-            </Link>
-            <Link href="#" className="flex-1" prefetch={false}>
-
-            {/* <Button variant="outline" onClick={audioButton}>Audio URL</Button> */}
-            </Link>
           </div>
         </div>
         <DialogFooter>

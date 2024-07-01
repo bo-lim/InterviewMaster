@@ -113,7 +113,7 @@ const Interview = () => {
     const video_formData = new FormData()
     video_formData.append('video_key',video_key)
     video_formData.append('blob',recorded.blob)
-    save_video(video_formData);
+    await save_video(video_formData);
     // await cancelRecording(recording_id);
     await closeCamera(recording_id);
     await cancelRecording(recording_id);
@@ -175,7 +175,7 @@ const Interview = () => {
       console.log(response);
       console.log('STT 끝');
       setLoadingMessage("다음 질문 생성 중입니다. 잠시 기다려주세요."); // 로딩 메시지 설정
-      await setTextPath(response.s3_file_path);
+      setTextPath(response.s3_file_path);
       text_path = response.s3_file_path;
 
    
