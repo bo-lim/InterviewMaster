@@ -302,7 +302,7 @@ async def coverletter(item: coverletterItem):
 async def chat(item: chatItem):
     answer_url = item.answer_url
     itv_no = item.itv_no
-    question_number = item.question_number 
+    question_number = int(item.question_number)
 
     answer_text = await parsing(answer_url)
     combined_history =  await getall_history_redis(itv_no)
