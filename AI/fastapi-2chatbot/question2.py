@@ -366,11 +366,11 @@ async def coverletter(item: coverletterItem):
             }
         ]
     )
-    response_text = message.content[0].text
-    print("Response Text:", response_text)
+    response1_text = message.content[0].text
+    print("Response Text:", response1_text)
 
     try:
-        response = json.loads(response_text).get("question")
+        response = json.loads(response1_text).get("question")
         await store_history_redis(itv_no,"coverletter",prompt)
         await store_history_redis(itv_no,"question-1",response)
         print("Response:", response)
@@ -404,11 +404,11 @@ async def chat(item: chatItem):
     answers = []
 
     # 반복문을 사용하여 질문과 답변 생성
-    cover_letter = get_history_redis(itv_no, "coverletter")
+    cover_letter = await get_history_redis(itv_no, "coverletter")
 
     for i in range(1, question_number + 1):
-        question = get_history_redis(itv_no, f"question-{i}")
-        answer = get_history_redis(itv_no, f"answer-{i}")
+        question = await get_history_redis(itv_no, f"question-{i}")
+        answer = await get_history_redis(itv_no, f"answer-{i}")
         questions.append(question)
         answers.append(answer)
 
@@ -416,7 +416,7 @@ async def chat(item: chatItem):
 
     ## 꼬리 질문 생성
     if question_number ==2:
-        response2 = client.messages.create(
+        response2 = bedrock_client.messages.create(
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=4096,
         temperature=1,
@@ -452,11 +452,28 @@ async def chat(item: chatItem):
         ]
     )
         print(response2)
-        response2_text = json.loads(response2.content[0].text).get("question")
-        print(type(response2_text))
+        response2_text = response2.content[0].text
+        try:
+            response = json.loads(response2_text).get("question")
+            # print("Response:", response)
 
+        except json.JSONDecodeError as e:
+            print("JSONDecodeError:", e)
+            response = None
+        await store_history_redis(itv_no,f"answer-{question_number-1}",answer_text)
+        await store_history_redis(itv_no,f"question-{question_number}",response)
+        print("Complete history from Redis:")
+        print(answer_text)
+        print(response)
+
+        if response:
+            # tts, question = self.extract_question(response)
+            return {'response': response}
+        else:
+            return {'response': 'No messages'}
+        
     elif question_number == 3:
-        response3 = client.messages.create(
+        response3 = bedrock_client.messages.create(
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=4096,
         temperature=1,
@@ -510,11 +527,28 @@ async def chat(item: chatItem):
         ]
     )
         print(response3)
-        response3_text = json.loads(response3.content[0].text).get("question")
-        print(type(response3_text))
+        response3_text = response3.content[0].text
+        try:
+            response = json.loads(response3_text).get("question")
+            # print("Response:", response)
+
+        except json.JSONDecodeError as e:
+            print("JSONDecodeError:", e)
+            response = None
+        await store_history_redis(itv_no,f"answer-{question_number-1}",answer_text)
+        await store_history_redis(itv_no,f"question-{question_number}",response)
+        print("Complete history from Redis:")
+        print(answer_text)
+        print(response)
+
+        if response:
+            # tts, question = self.extract_question(response)
+            return {'response': response}
+        else:
+            return {'response': 'No messages'}
 
     elif question_number == 4:
-        response4 = client.messages.create(
+        response4 = bedrock_client.messages.create(
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=4096,
         temperature=1,
@@ -586,11 +620,28 @@ async def chat(item: chatItem):
         ]
     )
         print(response4)
-        response4_text = json.loads(response4.content[0].text).get("question")
-        print(type(response4_text))
+        response4_text = response4.content[0].text
+        try:
+            response = json.loads(response4_text).get("question")
+            # print("Response:", response)
 
+        except json.JSONDecodeError as e:
+            print("JSONDecodeError:", e)
+            response = None
+        await store_history_redis(itv_no,f"answer-{question_number-1}",answer_text)
+        await store_history_redis(itv_no,f"question-{question_number}",response)
+        print("Complete history from Redis:")
+        print(answer_text)
+        print(response)
+
+        if response:
+            # tts, question = self.extract_question(response)
+            return {'response': response}
+        else:
+            return {'response': 'No messages'}
+        
     elif question_number == 5:
-        response5 = client.messages.create(
+        response5 = bedrock_client.messages.create(
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=4096,
         temperature=1,
@@ -679,27 +730,25 @@ async def chat(item: chatItem):
             }
         ]
     )
-        print(response5)
-        response5_text = json.loads(response5.content[0].text).get("question")
-        print(type(response5_text))
+        response5_text = response5.content[0].text
+        try:
+            response = json.loads(response5_text).get("question")
+            # print("Response:", response)
 
-    response_text = response+f"{question_number}".content[0].text
+        except json.JSONDecodeError as e:
+            print("JSONDecodeError:", e)
+            response = None
+        await store_history_redis(itv_no,f"answer-{question_number-1}",answer_text)
+        await store_history_redis(itv_no,f"question-{question_number}",response)
+        print("Complete history from Redis:")
+        print(answer_text)
+        print(response)
 
-    try:
-        response = json.loads(response_text).get("question")
-        # print("Response:", response)
-
-    except json.JSONDecodeError as e:
-        # print("JSONDecodeError:", e)
-        response = None
-    await store_history_redis(itv_no,f"answer-{question_number-1}",answer_text)
-    await store_history_redis(itv_no,f"question-{question_number}",response)
-
-    if response:
-        # tts, question = self.extract_question(response)
-        return {'response': response}
-    else:
-        return {'response': 'No messages'}
+        if response:
+            # tts, question = self.extract_question(response)
+            return {'response': response}
+        else:
+            return {'response': 'No messages'}
 
 @app.post("/question/report", status_code=200)
 async def report(item: reportItem):
@@ -714,12 +763,12 @@ async def report(item: reportItem):
     answers = []
     question_answer_pairs = []
 
-    # 반복문을 사용하여 질문과 답변 생성
-    cover_letter = get_history_redis(itv_no, "coverletter")
+    # report 부분에 coverletter 사용 여부 확인
+    cover_letter = await get_history_redis(itv_no, "coverletter")
 
     for i in range(1, question_number + 1):
-        question = get_history_redis(itv_no, f"question-{i}")
-        answer = get_history_redis(itv_no, f"answer-{i}")
+        question = await get_history_redis(itv_no, f"question-{i}")
+        answer = await get_history_redis(itv_no, f"answer-{i}")
         questions.append(question)
         answers.append(answer)
         question_answer_pairs.append((question, answer))
@@ -749,7 +798,16 @@ async def report(item: reportItem):
     response_text = message.content[0].text
 
     try:
-        response = str(json.loads(response_text))
+        relevant_experience = json.loads(response_text).get("skill").get("relevant_experience")
+        problem_solving = json.loads(response_text).get("skill").get("problem_solving")
+        communication_skills = json.loads(response_text).get("skill").get("communication_skills")
+        initiative = json.loads(response_text).get("skill").get("initiative")
+        situation = json.loads(response_text).get("star").get("situation")
+        task = json.loads(response_text).get("star").get("relevant_experience")
+        action = json.loads(response_text).get("star").get("action")
+        result = json.loads(response_text).get("star").get("result")
+        overall_score = json.loads.get("overall_score")
+        encouragement = json.loads.get("encouragement")
         # print("Response:", response)
 
     except json.JSONDecodeError as e:
@@ -758,7 +816,22 @@ async def report(item: reportItem):
 
     if response:
         # tts, question = self.extract_question(response)
-        return {'response': response}
+        return {
+            'skill':{
+                'relevant_experience': relevant_experience,
+                'problem_solving': problem_solving,
+                'communication_skills': communication_skills,
+                'initiative': initiative
+                },
+            'star': {
+                'situation': situation,
+                'task': task,
+                'action': action,
+                'result': result
+                },
+            'overall_score': overall_score,
+            'encouragement': encouragement}
+
     else:
         return {'response': 'No messages'}
 
