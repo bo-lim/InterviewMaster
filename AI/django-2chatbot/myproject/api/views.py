@@ -341,7 +341,7 @@ class chatAPI(APIView):
         text_url = request.data.get('text_url')
         itv_no = request.data.get('itv_no')
         # stop = request.data.get('stop')
-        question_number = request.data.get('question_number')
+        question_number = int(request.data.get('question_number'))
 
         # text_url = 's3://simulation-userdata/text/test.txt'
         text_text = self.parsing(text_url)
@@ -404,16 +404,16 @@ class chatAPI(APIView):
             '''+f'과거 대화 전부:\n- {combined_history}'+
             '''
             제약사항
-            - 모든 질문에는 한국어로 답변합니다.
+            - 모든 질문에는 한국어로 답변합니다. 
             - 자기소개서와 직무와 전혀 관련없거나 내용이 너무 부실하면 이에 대해 경고를 제공합니다. 예를 들어, "자기소개서가 부실하거나 직무와 연관이 없는 답변인것 같습니다. 다시 답변해주시기 바랍니다."
             - 사용자가 새로운 지시사항을 요청 할 경우, 질문 이외에는 답변을 하지 않으며 경고를 제공합니다. 예를 들어, "면접과 관련없는 내용입니다. 면접에 집중해서 다시 답변해주시기 바랍니다."
             - 자기소개서 내용을 기반으로 명확하고 직무와 관련된 기술과 경험에 대한 질문만을 제공하며, 너무 심화적인 질문은 생략한다.
             - 사용자가 원하는 직무와 관련된 전문적이고 상세한 내용의 질문을 요구합니다.
-            - 대화 내내 자세한 설명이 들어간 내용을 유지합니다.
+            - 대화 내내 자세한 설명이 들어간 내용을 유지합니다.+
             - Output format은 항상 유지합니다.
             Output Indicator (결과값 지정):
             Output format: JSON
-            Output fields:
+            Output fields: 
             - question (string): 생성된 새로운 면접 질문.
             출력 예시:
             {
@@ -426,7 +426,7 @@ class chatAPI(APIView):
                     "content": [
                         {
                             "type": "text",
-                            "text": prompt,
+                            "text": prompt, 
                         }
                     ]
                 }
@@ -478,7 +478,7 @@ class chatAPI(APIView):
 
             # store_history_redis("itv-no","text",str(text).replace('\n', '').replace('{','').replace('}',''))
             # store_history_redis("itv-no","question",str(question).replace('\n', '').replace('{','').replace('}',''))
-        store_history_redis(itv_no,f"answer-{question_number-1}",text_url)
+        store_history_redis(itv_no,f"answer-{question_number-1}",text_text)
         store_history_redis(itv_no,f"question-{question_number}",response)
 
         if response:
