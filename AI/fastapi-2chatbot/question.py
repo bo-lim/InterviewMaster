@@ -457,10 +457,14 @@ async def report(item: reportItem):
         questions.append(question)
         answers.append(answer)
         question_answer_pairs.append((question, answer))
+    
+    print("question_answer_pairs : ", question_answer_pairs)
 
     message_text = ""
     for question, answer in question_answer_pairs:
         message_text += f"Question: {question}, Answer: {answer}\n"
+
+    print("message_text : ",message_text)
 
     ## 꼬리 질문 생성
     message = bedrock_client.messages.create(
