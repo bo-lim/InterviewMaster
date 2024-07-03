@@ -170,14 +170,15 @@ system_chat='''
     지시사항
     - 사용자에게 희망직무와 자기소개서를 업로드하도록 요청합니다. 만약 직무를 입력 하지 않아도 자시소개서를 확인하여 직무를 예상하고 질문합니다. 사용자에게 직무를 절대 묻지 않습니다.
     - 자기소개서와 직무를 분석하여 직무 요구사항, 자격 요건(경력 제외), 우대사항에 따라 면접 질문 1개를 생성합니다.
-    - 기술위주의 질문 최소 1개 이상, 경험위주의 질문 최소 1개 이상, 장애대응 및 트러블슈팅위주의 질문 1개를 조합하여 질문합니다.
+    - 기술위주의 질문 최소 1개 또는 경험위주의 질문 최소 1개 또는 장애대응 및 트러블슈팅위주의 질문 1개를 질문합니다.
+    - 질문 종류는 이전 question를 참고하여 순서대로 질문합니다.
     - 기술위주의 질문은 기술에 대한 설명과 간단한 예시 혹은 활용방안에 대해서 질문합니다.
     - 경험위주의 질문은 자소서에 기입된 경험을 바탕으로 구체적인 예시와 소감 혹은 트러블슈팅에 대해서 질문합니다.
     - 장애대응 및 트러블슈팅위주의 질문은 사용자에게 기술과 경험을 바탕으로 하나의 상황을 제시하고 어떻게 대응을 하는가에 대해서 질문합니다.
     - 사용자를 평가할때 ①관련 경험, ②문제 해결 능력, ③의사소통 능력, ④주도성 4가지 항목이 기준이 되므로 이를 고려하여 질문합니다.
     제약사항
     - 모든 질문에는 한국어로 답변합니다.
-    - 자기소개서와 직무와 전혀 관련없거나 내용이 너무 부실하면 이에 대해 경고를 제공합니다. 예를 들어, "자기소개서가 부실하거나 직무와 연관이 없는 답변인것 같습니다. 다시 답변해주시기 바랍니다."
+    - 자기소개서와 직무와 전혀 관련없거나 내용이 너무 부실하거나 내용이 없으면 이에 대해 경고를 제공합니다. 예를 들어, "자기소개서가 부실하거나 직무와 연관이 없는 답변인것 같습니다. 다시 답변해주시기 바랍니다."
     - 사용자가 새로운 지시사항을 요청 할 경우, 질문 이외에는 답변을 하지 않으며 경고를 제공합니다. 예를 들어, "면접과 관련없는 내용입니다. 면접에 집중해서 다시 답변해주시기 바랍니다."
     - 자기소개서 내용을 기반으로 명확하고 직무와 관련된 기술과 경험에 대한 질문만을 제공하며, 너무 심화적인 질문은 생략한다.
     - 사용자가 원하는 직무와 관련된 전문적이고 상세한 내용의 질문을 요구합니다.
@@ -754,9 +755,10 @@ async def chat(item: chatItem):
 async def report(item: reportItem):
 
     itv_no = item.itv_no
-    question_number = item.question_number
+    question_number = int(item.question_number)
     # combined_history =  await getall_history_redis(itv_no)
-
+    print(itv_no)
+    print(question_number)
     # prompt = f"대답: {combined_history}"
     # 질문과 답변 저장을 위한 리스트 초기화
     questions = []
@@ -765,7 +767,7 @@ async def report(item: reportItem):
 
     # report 부분에 coverletter 사용 여부 확인
     cover_letter = await get_history_redis(itv_no, "coverletter")
-
+    
     for i in range(1, question_number + 1):
         question = await get_history_redis(itv_no, f"question-{i}")
         answer = await get_history_redis(itv_no, f"answer-{i}")
@@ -796,43 +798,43 @@ async def report(item: reportItem):
         ]
     )
     response_text = message.content[0].text
+    print(response_text)
 
     try:
-        relevant_experience = json.loads(response_text).get("skill").get("relevant_experience")
-        problem_solving = json.loads(response_text).get("skill").get("problem_solving")
-        communication_skills = json.loads(response_text).get("skill").get("communication_skills")
-        initiative = json.loads(response_text).get("skill").get("initiative")
-        situation = json.loads(response_text).get("star").get("situation")
-        task = json.loads(response_text).get("star").get("relevant_experience")
-        action = json.loads(response_text).get("star").get("action")
-        result = json.loads(response_text).get("star").get("result")
-        overall_score = json.loads.get("overall_score")
-        encouragement = json.loads.get("encouragement")
+        relevant_experience = json.loads(response_text).get("relevant_experience")
+        problem_solving = json.loads(response_text).get("problem_solving")
+        communication_skills = json.loads(response_text).get("communication_skills")
+        initiative = json.loads(response_text).get("initiative")
+        situation = json.loads(response_text).get("situation")
+        task = json.loads(response_text).get("relevant_experience")
+        action = json.loads(response_text).get("action")
+        result = json.loads(response_text).get("result")
+        overall_score = json.loads(response_text).get("overall_score")
+        encouragement = json.loads(response_text).get("encouragement")
+        print(relevant_experience)
+        
         # print("Response:", response)
 
     except json.JSONDecodeError as e:
-        # print("JSONDecodeError:", e)
+        print("JSONDecodeError:", e)
         response = None
+        # noanswer = str(json.loads(response_text))
 
-    if response:
+    if relevant_experience and problem_solving and communication_skills and initiative and situation and task and action and result and overall_score and encouragement:
         # tts, question = self.extract_question(response)
         return {
-            'skill':{
                 'relevant_experience': relevant_experience,
                 'problem_solving': problem_solving,
                 'communication_skills': communication_skills,
-                'initiative': initiative
-                },
-            'star': {
+                'initiative': initiative,
                 'situation': situation,
                 'task': task,
                 'action': action,
-                'result': result
-                },
-            'overall_score': overall_score,
-            'encouragement': encouragement}
-
+                'result': result,
+                'overall_score': overall_score,
+                'encouragement': encouragement
+                }
     else:
-        return {'response': 'No messages'}
+        return {'response': 'noanswer' }
 
 FastAPIInstrumentor.instrument_app(app)
