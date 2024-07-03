@@ -276,18 +276,15 @@ Output fields:
 출력 예시:
 
 {
-"skill": {
 "relevant_experience": "%,설명",
 "problem_solving": "%,설명",
 "communication_skills": "%,설명",
-"initiative": "%, 설명"
-},
-"STAR": {
-"task": "%,설명",
-"action": "%,설명",
-"result": "%,설명"
-},
-"overall_score": "%",
+"initiative": "%, 설명",
+"situation" : "%, 설명",
+"task": "%, 설명",
+"action": "%, 설명",
+"result": "%, 설명",
+"overall_score": "",
 "encouragement" : ""
 }'''
 

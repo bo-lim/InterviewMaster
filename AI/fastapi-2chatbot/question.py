@@ -166,10 +166,8 @@ system_report='''
 
     Output Indicator (결과값 지정): 
     Output format: JSON
-
     Output fields:
-    - result_report (string): 생성된 새로운 면접 질문.
-
+    
     출력 예시:
 
     {
