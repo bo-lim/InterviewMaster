@@ -14,10 +14,6 @@ import useConfirmPageLeave from "@/hooks/useConfirmPageLeave";
 // import useBlockPageNavigation from "@/hooks/useRouteChangeBlocking";
 
 
-const DynamicComponenetWithNoSSR = dynamic(
-  () => import("../../hooks/useConfirmPageLeave"), { ssr: false });
-
-  DynamicComponenetWithNoSSR;
 
 const Interview = () => {
   useConfirmPageLeave(); // 훅 사용

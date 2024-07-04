@@ -1,5 +1,4 @@
 "use client";
-import dynamic from "next/dynamic";
 
 import React, { act, useEffect, useState } from "react";
 import { Cookies } from "react-cookie";
@@ -12,11 +11,6 @@ import { ResponsiveRadialBar } from '@nivo/radial-bar'
 import { ResponsiveRadar } from '@nivo/radar'
 import { Label } from "../../components/ui/label";
 
-
-const DynamicComponenetWithNoSSR = dynamic(
-  () => import("../../hooks/useConfirmPageLeave"), { ssr: false });
- 
-DynamicComponenetWithNoSSR;
 
 const Report = () => {
 
