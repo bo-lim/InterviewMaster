@@ -2,27 +2,16 @@
 import dynamic from "next/dynamic";
 
 import React, { act, useEffect, useState } from "react";
-import DevImg from "../../components/Devlmg";
 import { Cookies } from "react-cookie";
 import { createPresignedUrlWithClient, getReport, post_review } from "../api";
-import { Tabs, TabsList, TabsContent, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardHeader } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
-import Link from "next/link";
 import ReactPlayer from 'react-player';
-import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
-import { ResponsiveBar } from "@nivo/bar"
 import { ResponsiveRadialBar } from '@nivo/radial-bar'
 import { ResponsiveRadar } from '@nivo/radar'
 import { Label } from "../../components/ui/label";
 
-import ApexCharts from 'apexcharts'
-import { fromJSON } from "postcss";
-import {
-  getSignedUrl,
-  S3RequestPresigner,
-} from "@aws-sdk/s3-request-presigner";
 
 const DynamicComponenetWithNoSSR = dynamic(
   () => import("../../hooks/useConfirmPageLeave"), { ssr: false });
@@ -33,7 +22,6 @@ const Report = () => {
 
 
   const [data, setData] = useState(null);
-  const [review, setReview] = useState('');
 
   const [actionText, setActionText] = useState('');
   const [actionPercentage, setActionPercentage] = useState('');
@@ -66,8 +54,6 @@ const Report = () => {
   const [taskPercentage, setTaskPercentage] = useState('');
   const [taskText, setTaskText] = useState('');
 
-
-
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
@@ -92,14 +78,7 @@ const Report = () => {
     setIsModalOpen(true);
   };
 
-  const audioButton = () => {
-    const player = new Audio(audio);
-    player.play()
-  }
-
   useEffect(() => {
-    
-
     const fetchData = async () => {
       try {
         if (user_id && itv_no) {
@@ -117,10 +96,8 @@ const Report = () => {
             };
             const PercentageNonNumber = (text) => {
               var num = text.split('%, ')
-
               return [num[0]];
             }
-
             const ScoreNonePercentage = (text) => {
               var score = text.replace('%','')
 
@@ -409,8 +386,6 @@ const Report = () => {
 
 
   return (
- 
-
     <div className="w-full max-w-6xl mx-auto py-8 px-4">
     <h1 className="text-3xl font-bold mb-6">Q&A Report</h1>
     <div className="h-[50vh]">

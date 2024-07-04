@@ -1,10 +1,8 @@
 "use server";
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
-import { fromJSON } from "postcss";
 import {
-  getSignedUrl,
-  S3RequestPresigner,
+  getSignedUrl
 } from "@aws-sdk/s3-request-presigner";
 
 const bucket = process.env.BUCKET_NAME;
