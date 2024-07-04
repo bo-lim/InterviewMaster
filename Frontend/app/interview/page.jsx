@@ -15,7 +15,9 @@ import useConfirmPageLeave from "@/hooks/useConfirmPageLeave";
 
 
 const DynamicComponenetWithNoSSR = dynamic(
-  () => import("@/hooks/useConfirmPageLeave"), { ssr: false });
+  () => import("../../hooks/useConfirmPageLeave"), { ssr: false });
+
+  DynamicComponenetWithNoSSR;
 
 const Interview = () => {
   useConfirmPageLeave(); // 훅 사용

@@ -1,4 +1,6 @@
 "use client";
+import dynamic from "next/dynamic";
+
 import React, { act, useEffect, useState } from "react";
 import DevImg from "../../components/Devlmg";
 import { Cookies } from "react-cookie";
@@ -21,6 +23,11 @@ import {
   getSignedUrl,
   S3RequestPresigner,
 } from "@aws-sdk/s3-request-presigner";
+
+const DynamicComponenetWithNoSSR = dynamic(
+  () => import("../../hooks/useConfirmPageLeave"), { ssr: false });
+ 
+DynamicComponenetWithNoSSR;
 
 const Report = () => {
 
@@ -91,6 +98,8 @@ const Report = () => {
   }
 
   useEffect(() => {
+    
+
     const fetchData = async () => {
       try {
         if (user_id && itv_no) {
