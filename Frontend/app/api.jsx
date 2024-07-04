@@ -30,15 +30,17 @@ export const createPresignedUrlWithClient = async (key) => {
 
 export const post_review = async(formData) => {
   const itv_no = formData.get("itv_no");
+  
 
   try {
     // user_id 전송
     // `${process.env.CHAT_POST_API}/chat/`
-    const response = await fetch(`http://192.168.0.4:8888/question/review/`, {
+    const response = await fetch(`${process.env.CHAT_POST_API}/report/`, {
       method: 'POST',
       headers: {"Content-Type": "application/json",},
       body: JSON.stringify({
-        itv_no: itv_no
+        itv_no: itv_no,
+        question_number: 3
       }),
     });
     if (!response.ok) {
@@ -54,18 +56,18 @@ export const post_review = async(formData) => {
 }
 
 export const post_chat = async(formData) => {
-  const text_url = formData.get("text_url");
+  const answer_url = formData.get("answer_url");
   const itv_no = formData.get("itv_no");
   const question_number = formData.get("question_number");
 
   try {
     // user_id 전송
     // `${process.env.CHAT_POST_API}/chat/`
-    const response = await fetch(`http://192.168.0.4:8888/question/chat/`, {
+    const response = await fetch(`${process.env.CHAT_POST_API}/chat/`, {
       method: 'POST',
       headers: {"Content-Type": "application/json",},
       body: JSON.stringify({
-        text_url: text_url,
+        answer_url: answer_url,
         itv_no: itv_no,
         question_number: question_number
       }),
@@ -131,7 +133,7 @@ export const post_stt = async(formData) => {
       body: JSON.stringify({
         user_uuid: user_uuid,
         itv_cnt: itv_cnt,
-        file_path: file_path
+        file_path: `s3://simulation-userdata/${file_path}`
       }),
     });
     if (!response.ok) {
