@@ -93,6 +93,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 otel_logging_init()
 
+
+
 ###########################
 ########### DBW ###########
 ###########################
@@ -472,4 +474,5 @@ async def update_fb(item: ItemFb):
     except Exception as e:
         print("Exception occurred:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
+
 FastAPIInstrumentor.instrument_app(app)
