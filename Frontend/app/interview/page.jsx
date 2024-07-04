@@ -1,4 +1,5 @@
 'use client';
+import dynamic from 'next/dynamic'
 import React, { useEffect, useState,useCallback } from "react";
 import { checkAudioCodecPlaybackSupport, useRecordWebcam } from 'react-record-webcam';
 import { AudioRecorder,useAudioRecorder } from 'react-audio-voice-recorder';
@@ -11,6 +12,8 @@ import { create_polly, post_chat, post_new_qs, post_stt, save_audio, save_video 
 import { Camera } from "lucide-react";
 import useConfirmPageLeave from "@/hooks/useConfirmPageLeave";
 // import useBlockPageNavigation from "@/hooks/useRouteChangeBlocking";
+
+
 
 const Interview = () => {
   useConfirmPageLeave(); // 훅 사용
@@ -26,19 +29,7 @@ const Interview = () => {
   const [disabled, setDisabled] = useState(true);
   const [countdown, setCountdown] = useState(null);
   // const { isModalOpen, confirmNavigation, cancelNavigation, routePath } = useBlockPageNavigation();
-  
-  //현재 날짜 추가
-  const now = new Date(); // 현재 날짜 및 시간을 반환
-  const year = now.getFullYear().toString().slice(-2); // 연도의 마지막 두 자리
-  const month = ('0' + (now.getMonth() + 1)).slice(-2); // 월 (0-11), 따라서 1을 더해줌
-  const day = ('0' + now.getDate()).slice(-2); // 일
-  const hours = ('0' + now.getHours()).slice(-2); // 시간 (24시간 형식)
-  const minutes = ('0' + now.getMinutes()).slice(-2); // 분
-  const seconds = ('0' + now.getSeconds()).slice(-2); // 초
-  const randomNum = ('000' + Math.floor(Math.random() * 1000)).slice(-3); // 000-999 사이의 무작위 숫자
-
-  const identifier = `${year}${month}${day}_${hours}${minutes}${seconds}_${randomNum}`;
-
+  const user_uuid = cookies.get('user_uuid');
   const [loadingMessage, setLoadingMessage] = useState(null); // 로딩 메시지 상태 추가
   const [nextloadingMessage, setNextLoadingMessage] = useState(""); // 로딩 메시지 상태 추가
   const [message, setMessage] = useState("");
@@ -47,26 +38,11 @@ const Interview = () => {
     activeRecordings,
     createRecording,
     cancelRecording,
-    clearError,
-    clearPreview,
     closeCamera,
-    download,
-    errorMessage,
     openCamera,
     stopRecording,
-    pauseRecording,
-    resumeRecording,
     startRecording,
-    muteRecording
   } = useRecordWebcam({mediaTrackConstraints: { video: true, audio: false }});
-
- 
-
-
-
-  //window.addEventListener('beforeunload', handleBeforeUnload);
-
-
 
   const [audio_key,setAudio_key] = useState('audio/tmp.mp3');
   const [video_key,setVideo_key] = useState('video/tmp.webm');
@@ -79,7 +55,6 @@ const Interview = () => {
     audio_formData.append('blob',blob)
     await save_audio(audio_formData)
     await fetchSTT();
- 
   };
   const polly = async (text) => {
     const arrayBuffer = await create_polly(text);
@@ -99,8 +74,6 @@ const Interview = () => {
       await openCamera(recording.id);
       await startRecording(recording.id);
       // await muteRecording(recording.id);
-      
-      
       await new Promise(resolve => setTimeout(resolve, 600000));
       await clickStopButton(recording.id);
     } catch (error) {
@@ -111,8 +84,12 @@ const Interview = () => {
   const stopAndUpload = async (recording_id) => {
     const recorded = await stopRecording(recording_id);
     const video_formData = new FormData()
-    video_formData.append('video_key',video_key)
+    const now = Date.now()
+    setVideo_key(`${user_uuid}/${itv_cnt}/${now}_video.webm`);
+    video_formData.append('video_key',`${user_uuid}/${itv_cnt}/${now}_video.webm`)
     video_formData.append('blob',recorded.blob)
+    console.log(video_key);
+    console.log(recorded.blob);
     save_video(video_formData);
     // await cancelRecording(recording_id);
     await closeCamera(recording_id);
@@ -123,40 +100,41 @@ const Interview = () => {
     // Start postVideo and recording
     postVideo();
     recorderControls.startRecording();
-
     // Start the countdown timer
     setCountdown(5);
     setMessage("");  // Clear any previous message
-
     const timer = setInterval(() => {
       setCountdown(prevCount => {
-        if (prevCount === 1) {
+        if (prevCount === 3) {
           clearInterval(timer);
           setCountdown(null);
           setMessage("지금 말씀해주세요");
           return null;
-
         }
         return prevCount - 1;
       });
     }, 1000);
-
     return () => clearInterval(timer);
   }, []);
   
 
-  const clickStopButton = (recording_id) => {
-    const user_uuid = cookies.get('user_uuid');
-    //get itv_cnt api 호출
-    
-    setAudio_key(`${user_uuid}/${itv_cnt}/${identifier}_audio.mp3`);
-    setVideo_key(`${user_uuid}/${itv_cnt}/${identifier}_video.webm`);
-    recorderControls.stopRecording();
+  const clickStopButton = async (recording_id) => {
+    const now = Date.now()
+    // setVideo_key(`${user_uuid}/${itv_cnt}/${now}_video.webm`);
+    setAudio_key(`${user_uuid}/${itv_cnt}/${now}_audio.mp3`);
     stopAndUpload(recording_id);
+    recorderControls.stopRecording();
     setMessage(null);  
   };
   const fetchSTT = async () => {
-    setLoadingMessage("다음 질문 생성 중입니다. 잠시 기다려주세요."); // 로딩 메시지 설정
+   
+    if(count ==3 ){
+      setLoadingMessage("면접 결과 생성 중 입니다."); // 로딩 메시지 설정
+
+    }else{
+      setLoadingMessage("다음 질문 생성 중입니다. 잠시 기다려주세요."); // 로딩 메시지 설정
+
+    }
 
     console.log(audio_key)
     console.log(cookies.get('itv_no'))
@@ -164,18 +142,22 @@ const Interview = () => {
     var text_path = ''
     try {
       const stt_formData = new FormData();
-      stt_formData.append('user_uuid',cookies.get('user_uuid'));
+      stt_formData.append('user_uuid',user_uuid);
       stt_formData.append('file_path',audio_key);
       stt_formData.append('itv_cnt',itv_cnt);
       const response = await post_stt(stt_formData);
       console.log(response);
       console.log('STT 끝');
-      setLoadingMessage("다음 질문 생성 중입니다. 잠시 기다려주세요."); // 로딩 메시지 설정
+      
+      if(count ==3 ){
+        setLoadingMessage("면접 결과 생성 중 입니다."); // 로딩 메시지 설정
+
+      }else{
+        setLoadingMessage("다음 질문 생성 중입니다. 잠시 기다려주세요."); // 로딩 메시지 설정
+
+      }
       setTextPath(response.s3_file_path);
       text_path = response.s3_file_path;
-
-   
-
     //질문 끝난 후 db에 post
     const newqs_formData = new FormData();
     newqs_formData.append('user_id',cookies.get('user_id'));
@@ -191,54 +173,33 @@ const Interview = () => {
   } catch (error) {
     console.log(error);
   }
+  try{
+      const chat_formData = new FormData();
+      chat_formData.append('answer_url',text_path);
+      chat_formData.append('itv_no',cookies.get('itv_no'));
+      chat_formData.append('question_number',count + 1);
+      const chat_response = await post_chat(chat_formData);
+      console.log(chat_response);
+      setchatQ(chat_response.response);
+      //router.push('/report');
+      if (count === 3) {
 
-    //Q1 끝난 후 Q1에 대한 사용자 답변 text S3 url 꼬리질문 api에 post
-
-    try{
-      // const response2 = await axios.post(`${process.env.CHAT_POST_API}/chat/`,
-      //   {
-      //     //text_url: response.data.s3_file_path
-      //     text_url: text_path,
-      //     thread_id: cookies.get('thread_id')
-      //   })
-        const chat_formData = new FormData();
-        chat_formData.append('text_url',text_path);
-        chat_formData.append('itv_no',cookies.get('itv_no'));
-        chat_formData.append('question_number',count + 1);
-        const chat_response = await post_chat(chat_formData);
-        console.log(chat_response);
-        // console.log(chat_response.stop)
-        // console.log({
-        //   text_url: response.data.s3_file_path
-        // });
-        setchatQ(chat_response.response);
-        //router.push('/report');
-        if (count === 3) {
-          router.push('/report')
-        }
-        else{
-          console.log('다음 질문');
-          console.log("next 전");
-          console.log(chatQ);
-          setFrontQ(chat_response.response);
-          polly(chat_response.response);
-          console.log("next 후");
-        }
-        
-       
-      } catch (error) {
-        console.log(error);
+        router.push('/report')
+      }
+      else{
+        console.log('다음 질문');
+        console.log("next 전");
+        console.log(chatQ);
+        setFrontQ(chat_response.response);
+        polly(chat_response.response);
+        console.log("next 후");
+      }
+    } catch (error) {
+      console.log(error);
     }
     // 로딩 메시지 해제 및 startNext 호출
       setLoadingMessage(null);
-      
-
   };
-
-  const clickNextButton = useCallback(() => {
-    setFrontQ(chatQ);
-    polly(chatQ);
-  }, [chatQ]);
 
   useEffect(() => {
   if (start == 0) {
@@ -248,62 +209,68 @@ const Interview = () => {
 }, [start]);
 
   return (
-    
     <div className="container mx-auto">
-      <div className="my-8">
-      <div className="flex items-center gap-4">
-        <h2 className="text-3xl font-semibold">면접 질문</h2>
-       
+  <div className="my-8">
+    <div className="flex items-center justify-between gap-4">
+      <h2 className="text-3xl font-semibold">면접 질문</h2>
+      <div>
+        {activeRecordings.map(recording => (
+          <div key={recording.id}>
+            <button
+              onClick={() => clickStopButton(recording.id)}
+              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            >
+              END
+            </button>
+          </div>
+        ))}
       </div>
-        <div className="bg-gray-100 p-4 mb-8">
-          <p className="text-lg">{frontQ}</p>
-        </div>
-      </div>
-      {/* <div>
-      {isModalOpen && (
-        <div>
-          <p>Are you sure you want to navigate to {routePath}?</p>
-          <button onClick={confirmNavigation}>Yes</button>
-          <button onClick={cancelNavigation}>No</button>
+    </div>
+    <div className="flex items-center gap-4 justify-center">
+      {message && (
+        <div className="text-center">
+          <p className="text-red-500 text-xl font-bold">{message}</p>
         </div>
       )}
-    </div> */}
-      
-      <div className="relative">
-        <div className="text-center text-white rounded-lg overflow-hidden shadow-xl aspect-w-16 aspect-h-9 max-w-5xl mx-auto">
-          {/* 비디오 재생을 위한 <video> 태그 */}
-          <ReactPlayer className="w-full h-auto mx-auto"
-
-          url='https://www.youtube.com/embed/IFmto-5_oK8?si=7uAh7Lb7A8BLjIM0'
-          width="960px"
-          height="540px"
-          muted={true}
-          loop={true}
-          playing={true}
-          volume="0" />
+    </div>
+    <div className="bg-gray-100 p-4 mb-8">
+      <p className="text-lg">{frontQ}</p>
+    </div>
+  </div>
+  <div className="relative">
+    <div className="text-center text-white rounded-lg overflow-hidden shadow-xl aspect-w-16 aspect-h-9 max-w-5xl mx-auto">
+      <ReactPlayer
+        className="w-full h-auto mx-auto"
+        url='https://www.youtube.com/embed/IFmto-5_oK8?si=7uAh7Lb7A8BLjIM0'
+        width="960px"
+        height="540px"
+        muted={true}
+        loop={true}
+        playing={true}
+        volume="0"
+      />
+    </div>
+    <div style={{ display: 'none' }}>
+      <AudioRecorder
+        onRecordingComplete={addAudioElement}
+        audioTrackConstraints={{
+          noiseSuppression: true,
+          echoCancellation: true,
+        }}
+        recorderControls={recorderControls}
+      />
+    </div>
+    <div>
+      {countdown !== null && (
+        <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center">
+          <div className="text-center">
+            <span className="block text-[10rem] font-bold text-white leading-none">
+              {countdown}
+            </span>
+          </div>
         </div>
-        <div style={{display: 'none' }}>
-        <AudioRecorder
-          onRecordingComplete={addAudioElement}
-          audioTrackConstraints={{
-            noiseSuppression: true,
-            echoCancellation: true,
-          }}
-          recorderControls={recorderControls}
-        />
-      </div>
-      <div>
-     
-     {countdown !== null && (
-       <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center">
-         <div className="text-center">
-           <span className="block text-[10rem] font-bold text-white leading-none">
-             {countdown}
-           </span>
-         </div>
-       </div>
-     )}
-     {loadingMessage !==null && (
+      )}
+      {loadingMessage !== null && (
         <div className="fixed inset-0 bg-[rgba(0,0,0,0.5)] flex items-center justify-center">
           <div className="text-center">
             <span className="block text-[3rem] font-bold text-white leading-none">
@@ -312,34 +279,20 @@ const Interview = () => {
           </div>
         </div>
       )}
-  </div> 
-        {/* <Button onClick={clickStartButton} disabled={disabled}>
-          Start
-        </Button> */}
-        {/* <Button onClick={fetchSTT}>STT</Button> */}
-
-      </div>
-      <div className="text-center mt-8">
-        {activeRecordings.map(recording => (
-          <div key={recording.id}>
-            <h2>{recording.status}</h2>
-            <video style={{display: 'none' }} ref={recording.webcamRef} autoPlay muted/>
-            {/* <video ref={recording.previewRef} autoPlay loop /> */}
-            {message && (
-                <p className="text-red-500 text-xl font-bold">{message}</p>
-              )}
-            <button onClick={() => clickStopButton(recording.id)} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
-              END
-            </button>
-
-          </div>
-        ))}
-        {/* <button onClick={clickNextButton} className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
-              NEXT
-            </button> */}
-      </div>
-
     </div>
+  </div>
+  <div className="text-center mt-8">
+    {activeRecordings.map(recording => (
+      <div key={recording.id}>
+        <h2>{recording.status}</h2>
+        <video style={{ display: 'none' }} ref={recording.webcamRef} autoPlay muted />
+      </div>
+    ))}
+  </div>
+</div>
+
+
+
   );
 };
 

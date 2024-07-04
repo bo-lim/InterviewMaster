@@ -45,6 +45,7 @@ const Mypage = () => {
   const [userData, setUserData] = useState(null);
   const [error, setError] = useState(null);
   const accessToken = cookies.get('access_token'); // Assuming your access token key is 'access_token'
+  
 
   useEffect(() => {
     const checkLoginStatus = async () => {
@@ -59,6 +60,7 @@ const Mypage = () => {
         const data = await getUserList(user_id);
         setUserData(data.user_info);
         cookies.set("user_uuid", data.user_info.user_uuid)
+        cookies.set("user_nm", data.user_info.user_nm);
       
 
       } catch (error) {
@@ -69,6 +71,7 @@ const Mypage = () => {
     checkLoginStatus();
   }, []);
   
+
 
   const handleLogout = async () => {
     try {
