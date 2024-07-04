@@ -1,4 +1,5 @@
 'use client';
+import dynamic from 'next/dynamic'
 import React, { useEffect, useState,useCallback } from "react";
 import { checkAudioCodecPlaybackSupport, useRecordWebcam } from 'react-record-webcam';
 import { AudioRecorder,useAudioRecorder } from 'react-audio-voice-recorder';
@@ -11,6 +12,10 @@ import { create_polly, post_chat, post_new_qs, post_stt, save_audio, save_video 
 import { Camera } from "lucide-react";
 import useConfirmPageLeave from "@/hooks/useConfirmPageLeave";
 // import useBlockPageNavigation from "@/hooks/useRouteChangeBlocking";
+
+
+const DynamicComponenetWithNoSSR = dynamic(
+  () => import("@/hooks/useConfirmPageLeave"), { ssr: false });
 
 const Interview = () => {
   useConfirmPageLeave(); // 훅 사용
