@@ -8,7 +8,6 @@ import logging
 import io
 from PyPDF2 import PdfReader
 from docx import Document
-from llama_index.readers.file import HWPReader
 import boto3
 import json
 import redis
@@ -288,6 +287,7 @@ Output fields:
 "overall_score": "",
 "encouragement" : ""
 }'''
+
 async def store_history_redis(hash_name,field,value):
     try:
         # 질문 데이터를 JSON 문자열로 변환
