@@ -6,6 +6,8 @@ from typing import Optional
 from pymongo import MongoClient
 from pydantic import BaseModel
 import os, uuid, requests, logging
+import boto3
+from boto3.dynamodb.conditions import Key
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
