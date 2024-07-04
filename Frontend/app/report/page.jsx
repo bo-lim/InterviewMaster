@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { act, useEffect, useState } from "react";
 import DevImg from "../../components/Devlmg";
 import { Cookies } from "react-cookie";
 import { createPresignedUrlWithClient, getReport, post_review } from "../api";
@@ -10,6 +10,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import Link from "next/link";
 import ReactPlayer from 'react-player';
 import { PollyClient,SynthesizeSpeechCommand } from "@aws-sdk/client-polly";
+import { ResponsiveBar } from "@nivo/bar"
+import { ResponsiveRadialBar } from '@nivo/radial-bar'
+import { ResponsiveRadar } from '@nivo/radar'
+import { Label } from "../../components/ui/label";
+
+import ApexCharts from 'apexcharts'
 import { fromJSON } from "postcss";
 import {
   getSignedUrl,
@@ -21,14 +27,50 @@ const Report = () => {
 
   const [data, setData] = useState(null);
   const [review, setReview] = useState('');
+
+  const [actionText, setActionText] = useState('');
+  const [actionPercentage, setActionPercentage] = useState('');
+
+  const [communicationPercentage, setCommunicationPercentage] = useState('');
+  const [communicationNumber, setCommunicationNumber] = useState('');
+  const [communicationText, setCommunicationText] = useState('');
+
+  const [encouragement, setEncouragement] = useState('');
+  const [initiativePercentage, setInitiativePercentage] = useState('');
+  const [initiaiveNumber, setInitiativeNumber] = useState('');
+  const [initiativeText, setInitiativeText] = useState('');
+
+  const [overallScore, setOverallScore] = useState(0);
+
+  const [problemSolvingPercentage, setProblemSolvingPercentage] = useState('');
+  const [problemSolvingNumber, setProblemSolvingNumber] = useState('');
+  const [problemSolvingText, setProblemSolvingText] = useState('');
+
+  const [relevantExperiencePercentage, setRelevantExperiencePercentage] = useState('');
+  const [relevantNumber, setRelevantNumber] = useState('');
+  const [relevantExperienceText, setRelevantExperienceText] = useState('');
+
+  const [resultText, setResultText] = useState('');
+  const [resultPercentage, setResultPercentage] = useState('');
+
+  const [situationText, setSituationText] = useState('');
+  const [situationPercentage, setSituationPercentage] = useState('');
+
+  const [taskPercentage, setTaskPercentage] = useState('');
+  const [taskText, setTaskText] = useState('');
+
+
+
   const [error, setError] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
   const [modalContent, setModalContent] = useState('');
   
   const cookies = new Cookies();
+  const user_nm = cookies.get('user_nm');
   // const user_id = "yejin8329@daum.net"; // 쿠키에서 user_id 가져오기
-  // const itv_no = "7054ab6aa4b4465da144b4aca94a1b19_240701_019"; 
+  // const itv_no = "7054ab6aa4b4465da144b4aca94a1b19_240703_085"; 
+
   const user_id = cookies.get('user_id'); // 쿠키에서 user_id 가져오기
   const itv_no = cookies.get('itv_no');  // itv_no 값을 정의해야 합니다
   
@@ -56,10 +98,79 @@ const Report = () => {
           review_formData.append('itv_no', itv_no);
           const review_response = await post_review(review_formData);
           console.log(review_response);
-          setReview(review_response.response);
+
+
+            const extractPercentageAndText = (text) => {
+              var tmp = text.split(', ')
+              const result = tmp.slice(1).join(" ");
+          
+              return [tmp[0], result];
+            };
+            const PercentageNonNumber = (text) => {
+              var num = text.split('%, ')
+
+              return [num[0]];
+            }
+
+            const ScoreNonePercentage = (text) => {
+              var score = text.replace('%','')
+
+              return Number(score);
+            }
+
+            const overallScore2 = ScoreNonePercentage(review_response.overall_score);
+            setOverallScore(overallScore2);
+            console.log(overallScore2);
+
+
+            const [actionPercentage, actionText] = extractPercentageAndText(review_response.action);
+            setActionPercentage(actionPercentage);
+            setActionText(actionText);
+
+            const [communicationPercentage, communicationText] = extractPercentageAndText(review_response.communication_skills);
+            const [communicationNumber] = PercentageNonNumber(review_response.communication_skills);
+            setCommunicationPercentage(communicationPercentage);
+            setCommunicationText(communicationText);
+            setCommunicationNumber(communicationNumber);
+            console.log(communicationNumber);
+
+            setEncouragement(review_response.encouragement);
+            const [initiativePercentage, initiativeText] = extractPercentageAndText(review_response.initiative);
+            const [initiaiveNumber] = PercentageNonNumber(review_response.initiative);
+            setInitiativeNumber(initiaiveNumber);
+            setInitiativePercentage(initiativePercentage);
+            setInitiativeText(initiativeText);
+
+
+            const [problemSolvingPercentage, problemSolvingText] = extractPercentageAndText(review_response.problem_solving);
+            const [problemSolvingNumber] = PercentageNonNumber(review_response.problem_solving);
+            setProblemSolvingNumber(problemSolvingNumber);
+            setProblemSolvingPercentage(problemSolvingPercentage);
+            setProblemSolvingText(problemSolvingText);
+            const [relevantExperiencePercentage, relevantExperienceText] = extractPercentageAndText(review_response.relevant_experience);
+            const [relevantNumber] = PercentageNonNumber(review_response.relevant_experience);
+            setRelevantNumber(relevantNumber);
+            setRelevantExperiencePercentage(relevantExperiencePercentage);
+            setRelevantExperienceText(relevantExperienceText);
+
+            const [resultPercentage, resultText] = extractPercentageAndText(review_response.result);
+            setResultPercentage(resultPercentage);
+            setResultText(resultText);
+
+            const [situationPercentage, situationText] = extractPercentageAndText(review_response.situation);
+            setSituationPercentage(situationPercentage);
+            setSituationText(situationText);
+
+            const [taskPercentage, taskText] = extractPercentageAndText(review_response.task);
+            setTaskPercentage(taskPercentage);
+            setTaskText(taskText);
+
+
+           
 
           const response = await getReport(user_id, itv_no);
           setData(response.itv_info[itv_no]);
+          console.log(response);
           console.log(response.itv_info[itv_no]);
 
           const qs_info = response.itv_info[itv_no].qs_info;
@@ -142,7 +253,7 @@ const Report = () => {
                 />{fileContent[key]}</div>
           
             )
-          }
+          } 
         >
           View Details
         </Button>
@@ -170,17 +281,264 @@ const Report = () => {
     </Dialog>
   ));
 
+
+
+
+  function MyResponsiveRadialBar() {
+    const data = [
+      {
+        "id": "SCORE",
+        "data": [
+          {
+            "x": "SCORE",
+            "y": overallScore
+          }
+        ]
+      }
+    ];
+    console.log(overallScore)
+    return (
+    <ResponsiveRadialBar
+    data={data}
+      valueFormat=" >-.2f"
+      startAngle={-90}
+      maxValue={100}
+      endAngle={90}
+      padding={0.4}
+      margin={{ top: 25, right: 10, bottom: 0, left: 10 }}
+      colors={{scheme: 'category10' }}
+      radialAxisStart={{ tickSize: 5, tickPadding: 5, tickRotation: 0 }}
+      circularAxisOuter={{ tickSize: 5, tickPadding: 12, tickRotation: 0 }}
+      legends={[
+        {
+          anchor: 'right',
+          direction: 'column',
+          justify: false,
+          translateX: -50,
+          translateY: 0,
+          itemsSpacing: 6,
+          itemDirection: 'left-to-right',
+          itemWidth: 100,
+          itemHeight: 18,
+          itemTextColor: '#999',
+          symbolSize: 18,
+          symbolShape: 'square',
+          effects: [
+            {
+              on: 'hover',
+              style: {
+                itemTextColor: '#000'
+              }
+            }
+          ]
+        }
+      ]}
+    />
+    );
+  };
+
+  function MyResponsiveRadar () {
+    const data = [
+      {
+        "taste": "Relevant Experience",
+        "Score": relevantNumber
+      },
+      {
+        "taste": "Problem-Solving",
+        "Score": problemSolvingNumber
+      },
+      {
+        "taste": "Communication",
+        "Score": communicationNumber
+      },
+      {
+        "taste": "Initiative",
+        "Score": initiaiveNumber
+      }
+    ];
+    
+    return (
+      <ResponsiveRadar
+      data={data}
+      keys={[ 'Score']}
+      indexBy="taste"
+      valueFormat=">-.2f"
+      margin={{ top: 70, right: 80, bottom: 55, left: 80 }}
+      borderColor={{ from: 'color' }}
+      gridLabelOffset={36}
+      dotSize={10}
+      dotColor={{ theme: 'background' }}
+      dotBorderWidth={2}
+      colors={{ scheme: 'category10' }}
+      blendMode="multiply"
+      motionConfig="wobbly"
+      legends={[
+          {
+              anchor: 'top-left',
+              direction: 'column',
+              translateX: -50,
+              translateY: -40,
+              itemWidth: 80,
+              itemHeight: 20,
+              itemTextColor: '#999',
+              symbolSize: 12,
+              symbolShape: 'circle',
+              effects: [
+                  {
+                      on: 'hover',
+                      style: {
+                          itemTextColor: '#000'
+                      }
+                  }
+              ]
+          }
+      ]}
+  />
+    );
+  };
+
+
+
   return (
+ 
+
     <div className="w-full max-w-6xl mx-auto py-8 px-4">
     <h1 className="text-3xl font-bold mb-6">Q&A Report</h1>
+    <div className="h-[50vh]">
+      <MyResponsiveRadialBar/>
+      <Label
+      className='absolute w-[60vw] h-[10vh] text-4xl' 
+      style={{ 
+        top: '60%', 
+        left: '50%', 
+        transform: 'translate(-20%, -1%)',
+        backgroundColor: 'white',  
+        color: 'black'
+        }}>{user_nm}님의 SCORE: {overallScore}점</Label>
+    </div>
+
+
+    <div className="space-y-8 p-4">
+    <div className="flex flex-col md:flex-row md:space-x-8">
+      <div className="flex-1">
+        <MyResponsiveRadar className="h-[23vh] aspect-[4/3]" />
+
+      </div>
+      <div className="flex-1 space-y-4">
+        <div className="flex items-center space-x-4">
+          <div className="text-3xl font-bold text-blue-500">{relevantExperiencePercentage}</div>
+          <div>
+            <h3 className="text-lg font-semibold">Relevant Experience</h3>
+            <p className="text-sm text-muted-foreground">
+              {relevantExperienceText}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
+        <div className="text-3xl font-bold text-blue-500">{problemSolvingPercentage}</div>
+          <div>
+            <h3 className="text-lg font-semibold">Problem-Solving Skills</h3>
+            <p className="text-sm text-muted-foreground">
+            {problemSolvingText}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="text-3xl font-bold text-blue-500">{communicationPercentage}</div>
+          <div>
+            <h3 className="text-lg font-semibold">Communication Skills</h3>
+            <p className="text-sm text-muted-foreground">
+            {communicationText}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-4">
+          <div className="text-3xl font-bold text-blue-500">{initiativePercentage}</div>
+          <div>
+            <h3 className="text-lg font-semibold">Initiative</h3>
+            <p className="text-sm text-muted-foreground">
+            {initiativeText}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <h2 className="text-2xl font-bold text-blue-500">STAR Method</h2>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-blue-500 text-white flex items-center justify-center rounded-full text-lg font-bold">
+              S
+            </div>
+            <div className="text-xl font-semibold">Situation</div>
+          </div>
+          <div className="flex items-center space-x-4 mt-2">
+            <div className="text-3xl font-bold text-blue-500">{situationPercentage}</div>
+            <p className="text-sm text-muted-foreground">
+            {situationText}
+            </p>
+          </div>
+        </div>
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-blue-500 text-white flex items-center justify-center rounded-full text-lg font-bold">
+              T
+            </div>
+            <div className="text-xl font-semibold">Task</div>
+          </div>
+          <div className="flex items-center space-x-4 mt-2">
+            <div className="text-3xl font-bold text-blue-500">{taskPercentage}</div>
+            <p className="text-sm text-muted-foreground">
+            {taskText}
+            </p>
+          </div>
+        </div>
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-blue-500 text-white flex items-center justify-center rounded-full text-lg font-bold">
+              A
+            </div>
+            <div className="text-xl font-semibold">Action</div>
+          </div>
+          <div className="flex items-center space-x-4 mt-2">
+            <div className="text-3xl font-bold text-blue-500">{actionPercentage}</div>
+            <p className="text-sm text-muted-foreground">
+            {actionText}
+            </p>
+          </div>
+        </div>
+        <div className="p-4 border rounded-lg">
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-blue-500 text-white flex items-center justify-center rounded-full text-lg font-bold">
+              R
+            </div>
+            <div className="text-xl font-semibold">Result</div>
+          </div>
+          <div className="flex items-center space-x-4 mt-2">
+            <div className="text-3xl font-bold text-blue-500">{resultPercentage}</div>
+            <p className="text-sm text-muted-foreground">
+            {resultText}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
     <div className="flex flex-col gap-6">
-      <div className="bg-muted px-4 py-2 rounded-md text-muted-foreground font-medium">{review}</div>
+      {/* <div className="bg-muted px-4 py-2 rounded-md text-muted-foreground font-medium">action:{review}</div> */}
       <div className="grid grid-cols-1 gap-6">
         {questionCards}
       </div>
     </div>
     {questionModal}
   </div>
-);
+  );
 };
 export default Report;
+
+
+
+
+
