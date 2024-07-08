@@ -93,6 +93,9 @@ AWS_BEDROCK_REGION = os.getenv('AWS_BEDROCK_REGION')
 SYSTEM_COVERLETTER = os.getenv('SYSTEM_COVERLETTER')
 SYSTEM_CHAT = os.getenv('SYSTEM_CHAT')
 SYSTEM_REPORT = os.getenv('SYSTEM_REPORT')
+AWS_ELASTICACHE_REDIS_ENDPOINT = os.getenv('AWS_ELASTICACHE_REDIS_ENDPOINT')
+AWS_ELASTICACHE_REDIS_USER = os.getenv('AWS_ELASTICACHE_REDIS_USER')
+AWS_ELASTICACHE_REDIS_PASSWORD = os.getenv('AWS_ELASTICACHE_REDIS_PASSWORD')
 
 client = OpenAI(
     api_key = OPEN_API_KEY
@@ -116,7 +119,7 @@ bedrock_client = AnthropicBedrock(
 
 # redis_client = redis.Redis(host='192.168.56.200', port=6379, decode_responses=True)
 # redis_client = redis.Redis(host='192.168.0.15', port=30637, password='k8spass#')
-redis_client = redis.Redis(host='itm-redis-0pglm8.serverless.apn2.cache.amazonaws.com', port=6379, decode_responses=True, ssl=True, username='woosik', password='pass123#k8spass#')
+redis_client = redis.Redis(host=AWS_ELASTICACHE_REDIS_ENDPOINT, port=6379, decode_responses=True, ssl=True, username=AWS_ELASTICACHE_REDIS_USER, password=AWS_ELASTICACHE_REDIS_PASSWORD)
 class coverletterItem(BaseModel):
     coverletter_url: str
     position: str
