@@ -8,11 +8,12 @@ import logging
 import io
 from PyPDF2 import PdfReader
 from docx import Document
+from llama_index.readers.file import HWPReader
 import boto3
 import json
 import redis
 from anthropic import AnthropicBedrock
-import time
+from datetime import datetime
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -104,7 +105,7 @@ s3_client = boto3.client(
     's3',
     aws_access_key_id= AWS_ACCESS_KEY_ID,
     aws_secret_access_key= AWS_SECRET_ACCESS_KEY,
-    region_name= AWS_BEDROCK_REGION
+    region_name= AWS_REGION
 )
 
 bedrock_client = AnthropicBedrock(
@@ -114,11 +115,8 @@ bedrock_client = AnthropicBedrock(
 )
 
 # redis_client = redis.Redis(host='192.168.56.200', port=6379, decode_responses=True)
-redis_client = redis.Redis(host='192.168.0.15', port=30637, password='k8spass#')
-## 
-class Item(BaseModel):
-    user_id: str
-    text: str
+# redis_client = redis.Redis(host='192.168.0.15', port=30637, password='k8spass#')
+redis_client = redis.Redis(host='itm-redis-0pglm8.serverless.apn2.cache.amazonaws.com', port=6379, decode_responses=True, ssl=True, username='woosik', password='pass123#k8spass#')
 class coverletterItem(BaseModel):
     coverletter_url: str
     position: str
@@ -153,14 +151,25 @@ system_coverletter ='''
    - 연계 질문에 대한 응답을 바탕으로 추가 연계 질문을 한 번 더 생성하고 묻습니다.
    - 두 번째 연계 질문에 대한 응답을 바탕으로 마지막 연계 질문을 한 번 더 생성하고 묻습니다.
    - 사용자가 대답을 잘 모르거나 어려워하면, 다음 주요 질문으로 넘어갑니다.
+7. 네번째 자소서 질문은 미래 계획 질문을 보냅니다.
+8. 사용자의 답변을 바탕으로 연계 질문을 한 번 생성하고 묻습니다.
+   - 연계 질문에 대한 응답을 바탕으로 추가 연계 질문을 한 번 더 생성하고 묻습니다.
+   - 두 번째 연계 질문에 대한 응답을 바탕으로 마지막 연계 질문을 한 번 더 생성하고 묻습니다.
+   - 사용자가 대답을 잘 모르거나 어려워하면, 다음 주요 질문으로 넘어갑니다.
+9. 다섯번째 자소서 질문은 시사 및 산업 동향 질문을 보냅니다.
+10. 사용자의 답변을 바탕으로 연계 질문을 한 번 생성하고 묻습니다.
+   - 연계 질문에 대한 응답을 바탕으로 추가 연계 질문을 한 번 더 생성하고 묻습니다.
+   - 두 번째 연계 질문에 대한 응답을 바탕으로 마지막 연계 질문을 한 번 더 생성하고 묻습니다.
+   - 사용자가 대답을 잘 모르거나 어려워하면, 다음 주요 질문으로 넘어갑니다.
 
 지시사항
 - 사용자에게 희망직무와 자기소개서를 업로드하도록 요청합니다. 만약 직무를 입력 하지 않아도 자시소개서를 확인하여 직무를 예상하고 질문합니다. 사용자에게 직무를 절대 묻지 않습니다.
 - 자기소개서와 직무를 분석하여 직무 요구사항, 자격 요건(경력 제외), 우대사항에 따라 면접 질문 1개를 생성합니다.
 - 기술위주의 질문 최소 1개 또는 경험위주의 질문 최소 1개 또는 장애대응 및 트러블슈팅위주의 질문 1개를 질문합니다.
 - 기술위주의 질문은 기술에 대한 설명과 간단한 예시 혹은 활용방안에 대해서 질문합니다.
-- 경험위주의 질문은 자소서에 기입된 경험을 바탕으로 구체적인 예시와 소감 혹은 트러블슈팅에 대해서 질문합니다.
+- 경험위주의 질문은 자소서에 기입된 경험을 바탕으로 대인관계 및 팀워크(갈등 관계, 리더쉽) 또는 문제 해결 능력(어려운상황,실패한 경험)에 대해서 질문합니다.
 - 장애대응 및 트러블슈팅위주의 질문은 사용자에게 기술과 경험을 바탕으로 하나의 상황을 제시하고 어떻게 대응을 하는가에 대해서 질문합니다.
+- 
 - 사용자를 평가할때 1.관련 경험, 2.문제 해결 능력, 3.의사소통 능력, 4.주도성 4가지 항목이 기준이 되므로 이를 고려하여 질문합니다.
 - 연계 질문일 경우 "type"을 tail, 자소서 질문은 "type"을 main으로 보냅니다.
 제약사항
@@ -204,6 +213,17 @@ system_chat='''
    - 연계 질문에 대한 응답을 바탕으로 추가 연계 질문을 한 번 더 생성하고 묻습니다.
    - 두 번째 연계 질문에 대한 응답을 바탕으로 마지막 연계 질문을 한 번 더 생성하고 묻습니다.
    - 사용자가 대답을 잘 모르거나 어려워하면, 다음 주요 질문으로 넘어갑니다.
+7. 네번째 자소서 질문은 미래 계획 질문을 보냅니다.
+8. 사용자의 답변을 바탕으로 연계 질문을 한 번 생성하고 묻습니다.
+   - 연계 질문에 대한 응답을 바탕으로 추가 연계 질문을 한 번 더 생성하고 묻습니다.
+   - 두 번째 연계 질문에 대한 응답을 바탕으로 마지막 연계 질문을 한 번 더 생성하고 묻습니다.
+   - 사용자가 대답을 잘 모르거나 어려워하면, 다음 주요 질문으로 넘어갑니다.
+9. 다섯번째 자소서 질문은 시사 및 산업 동향 질문을 보냅니다.
+10. 사용자의 답변을 바탕으로 연계 질문을 한 번 생성하고 묻습니다.
+   - 연계 질문에 대한 응답을 바탕으로 추가 연계 질문을 한 번 더 생성하고 묻습니다.
+   - 두 번째 연계 질문에 대한 응답을 바탕으로 마지막 연계 질문을 한 번 더 생성하고 묻습니다.
+   - 사용자가 대답을 잘 모르거나 어려워하면, 다음 주요 질문으로 넘어갑니다.
+
 지시사항
 - 사용자에게 희망직무와 자기소개서를 업로드하도록 요청합니다. 만약 직무를 입력 하지 않아도 자시소개서를 확인하여 직무를 예상하고 질문합니다. 사용자에게 직무를 절대 묻지 않습니다.
 - 자기소개서와 직무를 분석하여 직무 요구사항, 자격 요건(경력 제외), 우대사항에 따라 면접 질문 1개를 생성합니다.
@@ -284,7 +304,7 @@ Output fields:
 "task": "%, 설명",
 "action": "%, 설명",
 "result": "%, 설명",
-"overall_score": "",
+"overall_score": "%",
 "encouragement" : ""
 }'''
 
@@ -348,7 +368,11 @@ async def parsing(url):
     
     async def extract_text_from_txt(txt_content):
         return txt_content.decode('utf-8')
-
+    
+    async def extract_text_from_hwp(file_url):
+        reader = HWPReader()
+        documents = reader.load_data(file=file_url)
+        return documents[0].text
     # async def extract_text_from_hwp(hwp_content):
         
     #     doc = HWPReader()
@@ -378,8 +402,12 @@ async def parsing(url):
         text = await extract_text_from_docx(file_content)
     elif key.endswith('.txt'):
         text = await extract_text_from_txt(file_content)
-    # elif key.endswith('.hwp'):
-    #     text = await extract_text_from_hwp(file_content)
+    elif key.endswith('.hwp'):
+        file_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".hwp"
+        bucket = bucket_name
+        key = key
+        s3_client.download_file(bucket, key, file_name)
+        text = await extract_text_from_hwp(file_name)
     else:
         raise ValueError('Unsupported file type')
     return text
