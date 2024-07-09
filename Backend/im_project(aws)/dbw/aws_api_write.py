@@ -51,7 +51,7 @@ class ItemUser(BaseModel):
     birthday: str
     tel: str
 
-@app.post("/create_user")
+@app.post("/dbw/create_user")
 async def create_user(item: ItemUser):
     user_id = item.user_id
     user_nm = item.name
@@ -110,7 +110,7 @@ class ItemUser(BaseModel):
     user_birthday: Optional[str] = None
     user_tel: Optional[str] = None
 
-@app.patch("/mod_user")
+@app.patch("/dbw/mod_user")
 async def mod_user(item: ItemUser):
     user_id = item.user_id
     user_nm = item.user_nm
@@ -222,7 +222,7 @@ class ItemItv(BaseModel):
     itv_job: str
     itv_text_url: str
 
-@app.post("/new_itv")
+@app.post("/dbw/new_itv")
 async def new_itv(item: ItemItv):
     user_id = item.user_id
     itv_cate = item.itv_cate
@@ -332,7 +332,7 @@ class ItemQs(BaseModel):
     qs_audio_url: str
     qs_text_url: str
 
-@app.post("/new_qs")
+@app.post("/dbw/new_qs")
 async def new_qs(item: ItemQs):
     user_id = item.user_id
     itv_no = item.itv_no
@@ -377,14 +377,14 @@ async def new_qs(item: ItemQs):
 # T1@T1_240614_001
 # n
 # http://url...
-class ItemQsCnt(BaseModel):
+class ItemFb(BaseModel):
     user_id: str
     itv_no: str
     itv_qs_cnt: int
     itv_fb_url: str
 
-@app.patch("/update_itv_qs_cnt")
-async def update_itv_qs_cnt(item: ItemQsCnt):
+@app.patch("/dbw/update_fb")
+async def update_fb(item: ItemFb):
     user_id = item.user_id
     itv_no = item.itv_no
     itv_qs_cnt = item.itv_qs_cnt
