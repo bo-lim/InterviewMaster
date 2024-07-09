@@ -8,6 +8,23 @@ from pydantic import BaseModel
 import os, uuid, requests
 import boto3
 from boto3.dynamodb.conditions import Key
+from opentelemetry import trace
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
+from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry._logs import (
+    SeverityNumber,
+    get_logger,
+    get_logger_provider,
+    std_to_otel,
+    set_logger_provider
+)
 
 # 테스트 방법
 # uvicorn aws_api_read:app --host 0.0.0.0 --port 8003 --reload
@@ -34,6 +51,45 @@ dynamodb = boto3.resource(
     region_name=os.getenv("AWS_REGION")
 )
 tb_itm = dynamodb.Table("ITM-PRD-DYN-TBL")
+
+# LOG
+otel_endpoint_url = os.getenv("OTEL_ENDPOINT_URL", 'http://opentelemetry-collector.istio-system.svc.cluster.local:4317')
+
+class FormattedLoggingHandler(LoggingHandler):
+    def emit(self, record: logging.LogRecord) -> None:
+        msg = self.format(record)
+        record.msg = msg
+        record.args = None
+        self._logger.emit(self._translate(record))
+
+def otel_logging_init():
+    # ------------Logging
+    # Set logging level
+    # CRITICAL = 50
+    # ERROR = 40
+    # WARNING = 30
+    # INFO = 20
+    # DEBUG = 10
+    # NOTSET = 0
+    # default = WARNING
+
+    # ------------ Opentelemetry loging initialization
+    logger_provider = LoggerProvider(
+        resource=Resource.create({})
+    )
+    set_logger_provider(logger_provider)
+    otlp_log_exporter = OTLPLogExporter(endpoint=otel_endpoint_url)
+    logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
+    otel_log_handler = FormattedLoggingHandler(logger_provider=logger_provider)
+
+    LoggingInstrumentor().instrument()
+    logFormatter = logging.Formatter(os.getenv("OTEL_PYTHON_LOG_FORMAT", None))
+    otel_log_handler.setFormatter(logFormatter)
+    logging.getLogger().addHandler(otel_log_handler)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+otel_logging_init()
 
 
 
@@ -67,6 +123,7 @@ async def get_uuid():
 # 호출시 auth로 redirect해서 인증 진행
 @app.get("/dbr/act/kakao")
 def kakao():
+    logger.info('LOGIN')
     kakao_client_key = os.getenv("KAKAO_CLIENT_KEY")
     if os.getenv("env") == "eks":
         kakao_url = os.getenv("KAKAO_REDIRECT_EKS_URI")
@@ -112,7 +169,7 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
     
     res = requests.post(url)
     result = res.json()
-
+    
     print("*****/act/kakao/auth result*****\n", result, "\n********************************")
     access_token = result["access_token"]
     response.set_cookie(key="kakao", value=access_token)
@@ -125,10 +182,10 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
     user_info_res = requests.get(user_info_url, headers=headers)
     user_info_result = user_info_res.json()
     print("*****user info result*****\n", user_info_result, "\n**************************")
-
+    
     if 'kakao_account' in user_info_result and 'email' in user_info_result['kakao_account']:
         email = user_info_result['kakao_account']['email']
-
+        
         # DB user체크 부분
         # info 조회
         itm_user_info = tb_itm.get_item(
@@ -160,7 +217,7 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
                 "user_itv_cnt": itm_user_history['Item'].get('user_itv_cnt', 0)
             }
         }
-
+        
         # user정보가 없을 경우에는 false값 넘겨줘서 신규가입 화면으로
         # user정보가 있을 경우에는 true값 넘겨줘서 마이페이지 확인 화면 or 메인페이지로
         if not user:
@@ -169,7 +226,7 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
         else:
             print("*****user info DB result*****\n기존유저\n ", user, "\n*****************************")
             url = f"{db_check_url}/auth?email_id={email}&access_token={access_token}&message=main"
-
+        
         response = RedirectResponse(url)
         return response
     else:
@@ -185,9 +242,10 @@ class ItemToken(BaseModel):
 
 @app.post("/dbr/act/kakao/logout")
 def kakaoLogout(item: ItemToken, response: Response):
+    logger.info('LOGOUT')
     try:
         access_token = item.access_token
-
+        
         url = "https://kapi.kakao.com/v1/user/unlink"
         headers = {"Authorization": f"Bearer {access_token}"}
         res = requests.post(url, headers=headers)
@@ -200,7 +258,7 @@ def kakaoLogout(item: ItemToken, response: Response):
         
         response.delete_cookie(key="kakao")
         return {"logout": "success"}
-
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -211,10 +269,11 @@ def kakaoLogout(item: ItemToken, response: Response):
 # access_token받아야 로그아웃 처리 가능
 @app.get("/dbr/act/kakao/kill/{token}")
 def kakaokill(token: str, response: Response):
+    logger.info('LOGOUT')
     try:
         # 액세스 토큰(강제 kill)
         access_token = token
-
+        
         url = "https://kapi.kakao.com/v1/user/unlink"
         headers = {"Authorization": f"Bearer {access_token}"}
         res = requests.post(url, headers=headers)
@@ -227,7 +286,7 @@ def kakaokill(token: str, response: Response):
         
         response.delete_cookie(key="kakao")
         return {"logout": "success"}
-    
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -289,7 +348,7 @@ async def get_newitvcnt(user_id: str):
             'SK': 'history'
         }
     )
-
+    
     data = {
         "new_itv_cnt": itm_user_history['Item'].get('user_itv_cnt', 0)
     }
@@ -318,13 +377,13 @@ async def get_itv(user_id: str):
             'SK': 'history'
         }
     )
-
+    
     # itv 조회
     itm_itv_info = tb_itm.query(
             KeyConditionExpression=Key('PK').eq(f'u#{user_id}#itv_info')
     )
     itm_itv_info_list = {}
-
+    
     for itv_item in itm_itv_info.get('Items', []):
         itv_no = itv_item['SK'].replace('i#', '')
         
@@ -333,10 +392,10 @@ async def get_itv(user_id: str):
             KeyConditionExpression=Key('PK').eq(itv_item['SK'] + '#qs_info')
         )
         itm_qs_info_list = {}
-
+        
         for qs_item in itm_qs_info.get('Items', []):
             qs_no = qs_item['SK'].replace('q#', '')
-
+            
             itm_qs_info_list[qs_no] = {
                 "qs_content": qs_item.get('qs_content', ''),
                 "qs_video_url": qs_item.get('qs_video_url', ''),
@@ -355,7 +414,7 @@ async def get_itv(user_id: str):
             "qs_info": itm_qs_info_list
         }
         itm_itv_info_list[itv_no] = itv_data
-
+    
     data = {
         "user_id": user_id,
         "user_history": {
@@ -373,6 +432,8 @@ async def get_itv(user_id: str):
 # 출력값 user_id, user_history, itv_info
 @app.get("/dbr/get_itv/{user_id}/{itv_no}")
 async def get_itv_detail(user_id: str, itv_no: str):
+    logger.info('REPORT 정보 조회')
+    
     # info 조회
     itm_user_info = tb_itm.get_item(
         Key={
@@ -380,7 +441,7 @@ async def get_itv_detail(user_id: str, itv_no: str):
             'SK': 'info'
         }
     )
-
+    
     # itv 조회
     itm_user_itv = tb_itm.get_item(
         Key={
@@ -388,19 +449,19 @@ async def get_itv_detail(user_id: str, itv_no: str):
             'SK': f'i#{itv_no}'
         }
     )
-
+    
     itv_item = itm_user_itv['Item']
     itv_no = itv_item['SK'].replace('i#', '')
-
+    
     # qs 조회
     itm_qs_info = tb_itm.query(
         KeyConditionExpression=Key('PK').eq(itv_item['SK'] + '#qs_info')
     )
     itm_qs_info_list = {}
-
+    
     for qs_item in itm_qs_info.get('Items', []):
         qs_no = qs_item['SK'].replace('q#', '')
-
+        
         itm_qs_info_list[qs_no] = {
             "qs_content": qs_item.get('qs_content', ''),
             "qs_video_url": qs_item.get('qs_video_url', ''),
@@ -418,7 +479,7 @@ async def get_itv_detail(user_id: str, itv_no: str):
         "itv_qs_cnt": itv_item.get('itv_qs_cnt', ''),
         "qs_info": itm_qs_info_list
     }
-
+    
     data = {
         "user_id": user_id,
         "itv_info": {
@@ -426,3 +487,5 @@ async def get_itv_detail(user_id: str, itv_no: str):
         }
     }
     return data
+
+FastAPIInstrumentor.instrument_app(app)
