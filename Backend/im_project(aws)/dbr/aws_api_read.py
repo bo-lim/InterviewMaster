@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from typing import Optional
 from pymongo import MongoClient
 from pydantic import BaseModel
-import os, uuid, requests
+import os, uuid, requests, logging
 import boto3
 from boto3.dynamodb.conditions import Key
 from opentelemetry import trace
