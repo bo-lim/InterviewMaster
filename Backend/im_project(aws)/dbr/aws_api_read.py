@@ -123,7 +123,6 @@ async def get_uuid():
 # 호출시 auth로 redirect해서 인증 진행
 @app.get("/dbr/act/kakao")
 def kakao():
-    logger.info('LOGIN')
     kakao_client_key = os.getenv("KAKAO_CLIENT_KEY")
     if os.getenv("env") == "eks":
         kakao_url = os.getenv("KAKAO_REDIRECT_EKS_URI")
@@ -223,9 +222,11 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
         # user정보가 있을 경우에는 true값 넘겨줘서 마이페이지 확인 화면 or 메인페이지로
         if not user:
             print("*****user info DB result*****\n신규유저\n ", user, "\n*****************************")
+            logger.info(f'카카오 회원가입: {email}, {access_token}')
             url = f"{db_check_url}/auth?email_id={email}&access_token={access_token}&message=new"
         else:
             print("*****user info DB result*****\n기존유저\n ", user, "\n*****************************")
+            logger.info(f'카카오 로그인: {email}, {access_token}')
             url = f"{db_check_url}/auth?email_id={email}&access_token={access_token}&message=main"
         
         response = RedirectResponse(url)
@@ -243,7 +244,6 @@ class ItemToken(BaseModel):
 
 @app.post("/dbr/act/kakao/logout")
 def kakaoLogout(item: ItemToken, response: Response):
-    logger.info('LOGOUT')
     try:
         access_token = item.access_token
         
@@ -253,6 +253,7 @@ def kakaoLogout(item: ItemToken, response: Response):
         result = res.json()
         
         print("*****Logout result*****\n", result, "\n***********************")
+        logger.info(f'로그아웃: {access_token}')
         
         if res.status_code != 200:
             raise HTTPException(status_code=res.status_code, detail="Failed to logout from Kakao")
@@ -270,7 +271,6 @@ def kakaoLogout(item: ItemToken, response: Response):
 # access_token받아야 로그아웃 처리 가능
 @app.get("/dbr/act/kakao/kill/{token}")
 def kakaokill(token: str, response: Response):
-    logger.info('LOGOUT')
     try:
         # 액세스 토큰(강제 kill)
         access_token = token
@@ -281,6 +281,7 @@ def kakaokill(token: str, response: Response):
         result = res.json()
         
         print("*****Logout result*****\n", result, "\n***********************")
+        logger.info(f'로그아웃: {access_token}')
         
         if res.status_code != 200:
             raise HTTPException(status_code=res.status_code, detail="Failed to logout from Kakao")
