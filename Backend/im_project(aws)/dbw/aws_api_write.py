@@ -141,7 +141,7 @@ async def create_user(item: ItemUser):
         tb_itm.put_item(Item=new_user_info)
         tb_itm.put_item(Item=new_user_history)
         
-        logger.info('Sign Up')
+        logger.info(f'회원가입: {user_id}, {user_nm}')
         return {"message": "User added successfully", "user_id": user_id}
         
     except Exception as e:
@@ -257,7 +257,7 @@ async def mod_user(item: ItemUser):
             
             if result['ResponseMetadata']['HTTPStatusCode'] != 200:
                 raise HTTPException(status_code=400, detail="Update failed")
-        logger.info('회원정보 수정')
+        logger.info(f'회원정보 수정: {user_id}, {user_nm}')
         return {"status": "success", "updated_fields": update_fields}
         
     except Exception as e:
@@ -362,8 +362,8 @@ async def new_itv(item: ItemItv):
                 ":user_itv_cnt": user_itv_cnt
             }
         )
-        logger.info('면접 시작')
-        return {"message": "Update successful"}
+        logger.info(f'면접 시작 {user_id}')
+        return {"message": "Update successful", "new_itv_no": new_itv_no}
         
     except Exception as e:
         print("Exception occurred:", str(e))
@@ -468,7 +468,7 @@ async def update_fb(item: ItemFb):
             raise HTTPException(status_code=400, detail="Update failed")
         
         return {"status": "success", "updated_fields": result["Attributes"]}
-        
+    
     except Exception as e:
         print("Exception occurred:", str(e))
         raise HTTPException(status_code=500, detail=str(e))
