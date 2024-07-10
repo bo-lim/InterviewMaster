@@ -127,13 +127,13 @@ async def create_user(item: ItemUser):
         new_user = {
             "_id": user_id,
             "user_info": {
+                # 유저의 고유한 값을 생성하기 위해서 uuid4사용(그 중 16진수 hex값 사용)
+                "user_uuid": uuid.uuid4().hex,
                 "user_nm": user_nm,
                 "user_nicknm": user_nicknm,
                 "user_gender": user_gender,
                 "user_birthday": user_birthday,
-                "user_tel": user_tel,
-                # 유저의 고유한 값을 생성하기 위해서 uuid4사용(그 중 16진수 hex값 사용)
-                "user_uuid": uuid.uuid4().hex
+                "user_tel": user_tel
             },
             "user_history": {
                 "user_itv_cnt": 0
