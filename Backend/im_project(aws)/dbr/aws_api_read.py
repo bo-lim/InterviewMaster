@@ -203,30 +203,31 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
             }
         )
         
+        user_info = itm_user_info.get('Item', {})
+        user_history = itm_user_history.get('Item', {})
+        
         user = {
             "user_id": email,
             "user_info": {
-                "user_uuid": itm_user_info['Item'].get('user_uuid', ''),
-                "user_nm": itm_user_info['Item'].get('user_nm', ''),
-                "user_nicknm": itm_user_info['Item'].get('user_nicknm', ''),
-                "user_gender": itm_user_info['Item'].get('user_gender', ''),
-                "user_birthday": itm_user_info['Item'].get('user_birthday', ''),
-                "user_tel": itm_user_info['Item'].get('user_tel', '')
+                "user_uuid": user_info.get('user_uuid', ''),
+                "user_nm": user_info.get('user_nm', ''),
+                "user_nicknm": user_info.get('user_nicknm', ''),
+                "user_gender": user_info.get('user_gender', ''),
+                "user_birthday": user_info.get('user_birthday', ''),
+                "user_tel": user_info.get('user_tel', '')
             },
             "user_history": {
-                "user_itv_cnt": itm_user_history['Item'].get('user_itv_cnt', 0)
+                "user_itv_cnt": user_history.get('user_itv_cnt', 0)
             }
         }
-        
+
         # user정보가 없을 경우에는 false값 넘겨줘서 신규가입 화면으로
         # user정보가 있을 경우에는 true값 넘겨줘서 마이페이지 확인 화면 or 메인페이지로
-        if not user:
+        if not user_info:
             print("*****user info DB result*****\n신규유저\n ", user, "\n*****************************")
-            logger.info(f'카카오 회원가입: {email}, {access_token}')
             url = f"{db_check_url}/auth?email_id={email}&access_token={access_token}&message=new"
         else:
             print("*****user info DB result*****\n기존유저\n ", user, "\n*****************************")
-            logger.info(f'카카오 로그인: {email}, {access_token}')
             url = f"{db_check_url}/auth?email_id={email}&access_token={access_token}&message=main"
         
         response = RedirectResponse(url)
