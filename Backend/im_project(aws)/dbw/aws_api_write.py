@@ -27,7 +27,7 @@ from opentelemetry._logs import (
 )
 
 # 테스트 방법
-# uvicorn api_write:app --host 0.0.0.0 --port 8001 --reload
+# uvicorn aws_api_write:app --host 0.0.0.0 --port 8004 --reload
 
 app = FastAPI()
 
@@ -37,10 +37,10 @@ load_dotenv()
 # COSRS옵션 부여
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # 어느곳에서 접근을 허용할 것이냐
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"], # 어떤 메서드에 대해서 허용할 것이냐("GET", "POST")
-    allow_headers=["*"], 
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # DynamoDB 연결 설정
@@ -72,7 +72,7 @@ def otel_logging_init():
     # DEBUG = 10
     # NOTSET = 0
     # default = WARNING
-    
+
     # ------------ Opentelemetry loging initialization
     logger_provider = LoggerProvider(
         resource=Resource.create({})
@@ -81,7 +81,7 @@ def otel_logging_init():
     otlp_log_exporter = OTLPLogExporter(endpoint=otel_endpoint_url)
     logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
     otel_log_handler = FormattedLoggingHandler(logger_provider=logger_provider)
-    
+
     LoggingInstrumentor().instrument()
     logFormatter = logging.Formatter(os.getenv("OTEL_PYTHON_LOG_FORMAT", None))
     otel_log_handler.setFormatter(logFormatter)
@@ -141,8 +141,11 @@ async def create_user(item: ItemUser):
         tb_itm.put_item(Item=new_user_info)
         tb_itm.put_item(Item=new_user_history)
         
+        logger.info(f'회원가입: {user_id}, {user_nm}')
         return {"message": "User added successfully", "user_id": user_id}
+        
     except Exception as e:
+        logger.error('Failed SIGN UP: %s', str(e))
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -205,7 +208,7 @@ async def mod_user(item: ItemUser):
         expression_attribute_values = {}
         expression_attribute_names = {}
         update_fields = {}
-        
+
         if user_nm is not None and user_nm != data["user_info"].get("user_nm"):
             update_expression += "#user_nm = :user_nm, "
             expression_attribute_values[":user_nm"] = user_nm
@@ -254,7 +257,7 @@ async def mod_user(item: ItemUser):
             
             if result['ResponseMetadata']['HTTPStatusCode'] != 200:
                 raise HTTPException(status_code=400, detail="Update failed")
-            
+        logger.info(f'회원정보 수정: {user_id}, {user_nm}')
         return {"status": "success", "updated_fields": update_fields}
         
     except Exception as e:
@@ -274,16 +277,16 @@ async def mod_user(item: ItemUser):
 # 프로게이머
 class ItemItv(BaseModel):
     user_id: str
-    itv_text_url: str
     itv_cate: str
     itv_job: str
+    itv_text_url: str
 
 @app.post("/dbw/new_itv")
 async def new_itv(item: ItemItv):
     user_id = item.user_id
-    itv_text_url = item.itv_text_url
     itv_cate = item.itv_cate
     itv_job = item.itv_job
+    itv_text_url = item.itv_text_url
     
     try:
         # info 조회
@@ -331,11 +334,11 @@ async def new_itv(item: ItemItv):
         # 면접 데이터 생성
         new_itv_info = {
             "itv_sub": new_itv_sub,
-            "itv_text_url": itv_text_url,
             "itv_cate": itv_cate,
             "itv_job": itv_job,
-            "itv_qs_cnt": "0",
-            "itv_date": today_date8
+            "itv_text_url": itv_text_url,
+            "itv_date": today_date8,
+            "itv_qs_cnt": "0"
         }
         
         # 면접 데이터 Upload
@@ -359,7 +362,8 @@ async def new_itv(item: ItemItv):
                 ":user_itv_cnt": user_itv_cnt
             }
         )
-        return {"message": "Update successful"}
+        logger.info(f'면접 시작 {user_id}')
+        return {"message": "Update successful", "new_itv_no": new_itv_no}
         
     except Exception as e:
         print("Exception occurred:", str(e))
@@ -389,7 +393,6 @@ class ItemQs(BaseModel):
 
 @app.post("/dbw/new_qs")
 async def new_qs(item: ItemQs):
-    logger.info(f'ITV_NO:{item.itv_no} QnA:{item.qs_no} 종료')
     user_id = item.user_id
     itv_no = item.itv_no
     # qs_no 1~9는 01~09로 처리, 10부터는 그대로 문자열 처리
@@ -425,94 +428,47 @@ async def new_qs(item: ItemQs):
 
 
 
-# 총 질문 개수 반영
+# 면접종료시 결과 반영
 # patch
-# 필수 입력값 : user_id, 면접번호, 질문개수
+# 필수 입력값 : user_id, 면접번호, 질문개수, 피드백 url정보
 
 # T1@T1.com
 # T1@T1_240614_001
-# n개
-class ItemQsCnt(BaseModel):
-    user_id: str
-    itv_no: str
-    itv_qs_cnt: int
-
-@app.patch("/dbw/update_itv_qs_cnt")
-async def update_itv_qs_cnt(item: ItemQsCnt):
-    user_id = item.user_id
-    itv_no = item.itv_no
-    itv_qs_cnt = item.itv_qs_cnt
-    
-    try:
-        # 인터뷰 질문 수 업데이트
-        result = tb_itm.update_item(
-            Key={
-                'PK': f'u#{user_id}#itv_info',
-                'SK': f'i#{itv_no}'
-            },
-            UpdateExpression="SET itv_qs_cnt = :itv_qs_cnt",
-            ExpressionAttributeValues={
-                ":itv_qs_cnt": itv_qs_cnt
-            },
-            ReturnValues="UPDATED_NEW"
-        )
-        
-        if result['ResponseMetadata']['HTTPStatusCode'] != 200:
-            raise HTTPException(status_code=400, detail="Update failed")
-        
-        return {"status": "success", "updated_fields": result["Attributes"]}
-        
-    except Exception as e:
-        print("Exception occurred:", str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-
-# 면접 종료시 결과url 반영(n번 수행)
-# patch
-# 입력값 user_id, 면접번호, 질문번호, 피드백 url정보
-
-# T1@T1.com
-# T1@T1_240614_001
-# 01 ~ n번
+# n
 # http://url...
 class ItemFb(BaseModel):
     user_id: str
     itv_no: str
-    qs_no: str
-    qs_fb_url: str
+    itv_qs_cnt: int
+    itv_fb_url: str
 
 @app.patch("/dbw/update_fb")
 async def update_fb(item: ItemFb):
     user_id = item.user_id
     itv_no = item.itv_no
-    qs_no = item.qs_no
-    qs_fb_url = item.qs_fb_url
+    itv_qs_cnt = item.itv_qs_cnt
+    itv_fb_url = item.itv_fb_url
     
     try:
-        # update문 생성
-        update_expression = "SET qs_fb_url = :qs_fb_url"
-        expression_attribute_values = {
-            ":qs_fb_url": qs_fb_url
-        }
-        
-        # update문 실행
+        # 업데이트 실행
         result = tb_itm.update_item(
             Key={
-                'PK': f'i#{itv_no}#qs_info',
-                'SK': f'q#{qs_no}'
+                'PK': f'u#{user_id}#itv_info',
+                'SK': f'i#{itv_no}'
             },
-            UpdateExpression=update_expression,
-            ExpressionAttributeValues=expression_attribute_values,
+            UpdateExpression="SET itv_qs_cnt = :itv_qs_cnt, itv_fb_url = :itv_fb_url",
+            ExpressionAttributeValues={
+                ":itv_qs_cnt": itv_qs_cnt,
+                ":itv_fb_url": itv_fb_url
+            },
             ReturnValues="UPDATED_NEW"
         )
-        print("Update query:", result)
         
         if result['ResponseMetadata']['HTTPStatusCode'] != 200:
             raise HTTPException(status_code=400, detail="Update failed")
         
         return {"status": "success", "updated_fields": result["Attributes"]}
-        
+    
     except Exception as e:
         print("Exception occurred:", str(e))
         raise HTTPException(status_code=500, detail=str(e))

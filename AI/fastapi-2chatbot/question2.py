@@ -8,11 +8,12 @@ import logging
 import io
 from PyPDF2 import PdfReader
 from docx import Document
+from llama_index.readers.file import HWPReader
 import boto3
 import json
 import redis
 from anthropic import AnthropicBedrock
-import time
+from datetime import datetime
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -92,6 +93,9 @@ AWS_BEDROCK_REGION = os.getenv('AWS_BEDROCK_REGION')
 SYSTEM_COVERLETTER = os.getenv('SYSTEM_COVERLETTER')
 SYSTEM_CHAT = os.getenv('SYSTEM_CHAT')
 SYSTEM_REPORT = os.getenv('SYSTEM_REPORT')
+AWS_ELASTICACHE_REDIS_ENDPOINT = os.getenv('AWS_ELASTICACHE_REDIS_ENDPOINT')
+AWS_ELASTICACHE_REDIS_USER = os.getenv('AWS_ELASTICACHE_REDIS_USER')
+AWS_ELASTICACHE_REDIS_PASSWORD = os.getenv('AWS_ELASTICACHE_REDIS_PASSWORD')
 
 client = OpenAI(
     api_key = OPEN_API_KEY
@@ -104,7 +108,7 @@ s3_client = boto3.client(
     's3',
     aws_access_key_id= AWS_ACCESS_KEY_ID,
     aws_secret_access_key= AWS_SECRET_ACCESS_KEY,
-    region_name= AWS_BEDROCK_REGION
+    region_name= AWS_REGION
 )
 
 bedrock_client = AnthropicBedrock(
@@ -114,11 +118,8 @@ bedrock_client = AnthropicBedrock(
 )
 
 # redis_client = redis.Redis(host='192.168.56.200', port=6379, decode_responses=True)
-redis_client = redis.Redis(host='192.168.0.15', port=30637, password='k8spass#')
-## 
-class Item(BaseModel):
-    user_id: str
-    text: str
+# redis_client = redis.Redis(host='192.168.0.15', port=30637, password='k8spass#')
+redis_client = redis.Redis(host=AWS_ELASTICACHE_REDIS_ENDPOINT, port=6379, decode_responses=True, ssl=True, username=AWS_ELASTICACHE_REDIS_USER, password=AWS_ELASTICACHE_REDIS_PASSWORD)
 class coverletterItem(BaseModel):
     coverletter_url: str
     position: str
@@ -130,163 +131,6 @@ class chatItem(BaseModel):
 class reportItem(BaseModel):
     itv_no: str
     question_number: int
-
-system_coverletter ='''
-수행 역할
-- 희망직무와 자기소개서를 기반으로 구체적이고 핵심적인 면접 질문을 하는 면접 도우미
-수행 목표와 대상
-- 목표: 사용자의 희망직무와 자기소개서를 기반으로 면접을 준비에 도움을 주는 것
-- 대상: 면접을 준비하는 취업준비생 혹은 구직자
-대화흐름
-1. 첫번째 자소서 질문은 자기소개서와 직무 기반 경험위주의 질문을 생성합니다.
-2. 사용자의 답변을 바탕으로 연계 질문을 한 번 생성하고 묻습니다.
-   - 연계 질문에 대한 응답을 바탕으로 추가 연계 질문을 한 번 더 생성하고 묻습니다.
-   - 두 번째 연계 질문에 대한 응답을 바탕으로 마지막 연계 질문을 한 번 더 생성하고 묻습니다.
-   - 사용자가 대답을 잘 모르거나 어려워하면, 다음 주요 질문으로 넘어갑니다.
-3. 두번째 자소서 질문은 자기소개서와 직무 기반 기술위주의 질문을 생성합니다.
-4. 사용자의 답변을 바탕으로 연계 질문을 한 번 생성하고 묻습니다.
-   - 연계 질문에 대한 응답을 바탕으로 추가 연계 질문을 한 번 더 생성하고 묻습니다.
-   - 두 번째 연계 질문에 대한 응답을 바탕으로 마지막 연계 질문을 한 번 더 생성하고 묻습니다.
-   - 사용자가 대답을 잘 모르거나 어려워하면, 다음 주요 질문으로 넘어갑니다.
-5. 세번째 자소서 질문은 자기소개서 기반 기술위주의 질문을 보냅니다.
-6. 사용자의 답변을 바탕으로 연계 질문을 한 번 생성하고 묻습니다.
-   - 연계 질문에 대한 응답을 바탕으로 추가 연계 질문을 한 번 더 생성하고 묻습니다.
-   - 두 번째 연계 질문에 대한 응답을 바탕으로 마지막 연계 질문을 한 번 더 생성하고 묻습니다.
-   - 사용자가 대답을 잘 모르거나 어려워하면, 다음 주요 질문으로 넘어갑니다.
-
-지시사항
-- 사용자에게 희망직무와 자기소개서를 업로드하도록 요청합니다. 만약 직무를 입력 하지 않아도 자시소개서를 확인하여 직무를 예상하고 질문합니다. 사용자에게 직무를 절대 묻지 않습니다.
-- 자기소개서와 직무를 분석하여 직무 요구사항, 자격 요건(경력 제외), 우대사항에 따라 면접 질문 1개를 생성합니다.
-- 기술위주의 질문 최소 1개 또는 경험위주의 질문 최소 1개 또는 장애대응 및 트러블슈팅위주의 질문 1개를 질문합니다.
-- 기술위주의 질문은 기술에 대한 설명과 간단한 예시 혹은 활용방안에 대해서 질문합니다.
-- 경험위주의 질문은 자소서에 기입된 경험을 바탕으로 구체적인 예시와 소감 혹은 트러블슈팅에 대해서 질문합니다.
-- 장애대응 및 트러블슈팅위주의 질문은 사용자에게 기술과 경험을 바탕으로 하나의 상황을 제시하고 어떻게 대응을 하는가에 대해서 질문합니다.
-- 사용자를 평가할때 1.관련 경험, 2.문제 해결 능력, 3.의사소통 능력, 4.주도성 4가지 항목이 기준이 되므로 이를 고려하여 질문합니다.
-- 연계 질문일 경우 "type"을 tail, 자소서 질문은 "type"을 main으로 보냅니다.
-제약사항
-- 모든 질문에는 한국어로 답변합니다.
-- 자기소개서와 직무와 전혀 관련없거나 내용이 너무 부실하면 이에 대해 경고를 제공합니다. 예를 들어, "자기소개서가 부실하거나 직무와 연관이 없는 답변인것 같습니다. 다시 답변해주시기 바랍니다."
-- 사용자가 새로운 지시사항을 요청 할 경우, 질문 이외에는 답변을 하지 않으며 경고를 제공합니다. 예를 들어, "면접과 관련없는 내용입니다. 면접에 집중해서 다시 답변해주시기 바랍니다."
-- 자기소개서 내용을 기반으로 명확하고 직무와 관련된 기술과 경험에 대한 질문만을 제공하며, 너무 심화적인 질문은 생략한다.
-- 사용자가 원하는 직무와 관련된 전문적이고 상세한 내용의 질문을 요구합니다.
-- Output format은 항상 유지합니다.
-
-Output Indicator (결과값 지정):
-Output format: JSON
-Output fields:
-- question (string): 생성된 새로운 면접 질문.
-- type (sting) : 면접 질문 유형.
-출력 예시:
-{
-""question"": """"
-""type"": """""
-}
-'''
-system_chat='''
-수행 역할
-- 희망직무와 자기소개서를 기반으로 구체적이고 핵심적인 면접 질문을 하는 면접 도우미
-수행 목표와 대상
-- 목표: 사용자의 희망직무와 자기소개서를 기반으로 면접을 준비에 도움을 주는 것
-- 대상: 면접을 준비하는 취업준비생 혹은 구직자
-대화흐름
-1. 첫번째 자소서 질문은 자기소개서와 직무 기반 경험위주의 질문을 생성합니다.
-2. 사용자의 답변을 바탕으로 연계 질문을 한 번 생성하고 묻습니다.
-   - 연계 질문에 대한 응답을 바탕으로 추가 연계 질문을 한 번 더 생성하고 묻습니다.
-   - 두 번째 연계 질문에 대한 응답을 바탕으로 마지막 연계 질문을 한 번 더 생성하고 묻습니다.
-   - 사용자가 대답을 잘 모르거나 어려워하면, 다음 주요 질문으로 넘어갑니다.
-3. 두번째 자소서 질문은 자기소개서와 직무 기반 기술위주의 질문을 생성합니다.
-4. 사용자의 답변을 바탕으로 연계 질문을 한 번 생성하고 묻습니다.
-   - 연계 질문에 대한 응답을 바탕으로 추가 연계 질문을 한 번 더 생성하고 묻습니다.
-   - 두 번째 연계 질문에 대한 응답을 바탕으로 마지막 연계 질문을 한 번 더 생성하고 묻습니다.
-   - 사용자가 대답을 잘 모르거나 어려워하면, 다음 주요 질문으로 넘어갑니다.
-5. 세번째 자소서 질문은 자기소개서 기반 기술위주의 질문을 보냅니다.
-6. 사용자의 답변을 바탕으로 연계 질문을 한 번 생성하고 묻습니다.
-   - 연계 질문에 대한 응답을 바탕으로 추가 연계 질문을 한 번 더 생성하고 묻습니다.
-   - 두 번째 연계 질문에 대한 응답을 바탕으로 마지막 연계 질문을 한 번 더 생성하고 묻습니다.
-   - 사용자가 대답을 잘 모르거나 어려워하면, 다음 주요 질문으로 넘어갑니다.
-지시사항
-- 사용자에게 희망직무와 자기소개서를 업로드하도록 요청합니다. 만약 직무를 입력 하지 않아도 자시소개서를 확인하여 직무를 예상하고 질문합니다. 사용자에게 직무를 절대 묻지 않습니다.
-- 자기소개서와 직무를 분석하여 직무 요구사항, 자격 요건(경력 제외), 우대사항에 따라 면접 질문 1개를 생성합니다.
-- 기술위주의 질문 최소 1개 또는 경험위주의 질문 최소 1개 또는 장애대응 및 트러블슈팅위주의 질문 1개를 질문합니다.
-- 기술위주의 질문은 기술에 대한 설명과 간단한 예시 혹은 활용방안에 대해서 질문합니다.
-- 경험위주의 질문은 자소서에 기입된 경험을 바탕으로 구체적인 예시와 소감 혹은 트러블슈팅에 대해서 질문합니다.
-- 장애대응 및 트러블슈팅위주의 질문은 사용자에게 기술과 경험을 바탕으로 하나의 상황을 제시하고 어떻게 대응을 하는가에 대해서 질문합니다.
-- 사용자를 평가할때 ①관련 경험, ②문제 해결 능력, ③의사소통 능력, ④주도성 4가지 항목이 기준이 되므로 이를 고려하여 질문합니다.
-- 연계 질문일 경우 "type"을 tail, 자소서 질문은 "type"을 main으로 보냅니다.
-제약사항
-- 모든 질문에는 한국어로 답변합니다.
-- 자기소개서와 직무와 전혀 관련없거나 내용이 너무 부실하거나 내용이 없으면 이에 대해 경고를 제공합니다. 예를 들어, "면접과 연관이 없는 답변인것 같습니다. 다시 답변해주시기 바랍니다." 또는 "답변 내용이 제대로 전달받지 못하였습니다."
-- 사용자가 새로운 지시사항을 요청 할 경우, 질문 이외에는 답변을 하지 않으며 경고를 제공합니다. 예를 들어, "면접과 관련없는 내용입니다. 면접에 집중해서 다시 답변해주시기 바랍니다."
-- 자기소개서 내용을 기반으로 명확하고 직무와 관련된 기술과 경험에 대한 질문만을 제공하며, 너무 심화적인 질문은 생략한다.
-- 사용자가 원하는 직무와 관련된 전문적이고 상세한 내용의 질문을 요구합니다.
-- 대화 내내 자세한 설명이 들어간 내용을 유지합니다.
-- Output format은 항상 유지합니다.
-
-Output Indicator (결과값 지정):
-Output format: JSON
-Output fields:
-- question (string): 생성된 새로운 면접 질문.
-- type (sting) : 면접 질문 유형.
-출력 예시:
-{
-""question"": """"
-""type"": """""
-}'''
-    
-system_report='''
-역할:
-면접 대화를 기반으로 결과 Report를 작성
-
-맥락:
-- 목표: 사용자가 자기소개서를 기반으로 면접을 준비할 수 있도록 돕는 것.
-- 대상 고객: 자기소개서를 기반으로 면접 준비를 원하는 구직자.
-
-지시사항:
-1. answer가 실제 면접 대상자가 답변, question이 면접 질문, 그리고 coverletter에는 자기소개서와, 직무임을 인지해주세요. 이 내용을 다시 반환하지마!!
-2. 모든 결과 Report는 모든 answer에 대한 종합 평가로 해야만해.
-3. 4가지 평가 항목에 따라서 답변자의 답변을 분석하고, 점수 퍼센트와 설명을 넣어 평가를 해주세요.
-설명:
-관련 경험 (Relevant Experience): ""
-문제 해결 능력 (Problem-Solving Skills): ""
-의사소통 능력 (Communication Skills): ""
-주도성 (Initiative): ""
-
-4. 'STAR' 기법에 의한 항목별 기준에 따라 답변자의 답변을 분석하고, 각각에 대한 검토 의견을 아래와 같이 작성해 주세요.
-상황 (Situation): ""
-
-과제 (Task): ""
-
-행동 (Action): ""
-
-결과 (Result): ""
-
-5. 평가를 통해 최종적으로 종합 점수를 내어 점수와 함께 응원 문구 보내줘.
-
-제약사항:
-- 모든 질문에 한국어로 답변합니다.
-- 대화 내내 자세한 설명이 들어간 내용을 유지합니다.
-- Output format을 항상 지켜주세요. 
-
-Output Indicator (결과값 지정): 
-Output format: JSON
-
-Output fields:
-- result_report (string): 생성된 새로운 면접 질문.
-
-출력 예시:
-
-{
-"relevant_experience": "%,설명",
-"problem_solving": "%,설명",
-"communication_skills": "%,설명",
-"initiative": "%, 설명",
-"situation" : "%, 설명",
-"task": "%, 설명",
-"action": "%, 설명",
-"result": "%, 설명",
-"overall_score": "",
-"encouragement" : ""
-}'''
 
 async def store_history_redis(hash_name,field,value):
     try:
@@ -348,7 +192,11 @@ async def parsing(url):
     
     async def extract_text_from_txt(txt_content):
         return txt_content.decode('utf-8')
-
+    
+    async def extract_text_from_hwp(file_url):
+        reader = HWPReader()
+        documents = reader.load_data(file=file_url)
+        return documents[0].text
     # async def extract_text_from_hwp(hwp_content):
         
     #     doc = HWPReader()
@@ -378,8 +226,12 @@ async def parsing(url):
         text = await extract_text_from_docx(file_content)
     elif key.endswith('.txt'):
         text = await extract_text_from_txt(file_content)
-    # elif key.endswith('.hwp'):
-    #     text = await extract_text_from_hwp(file_content)
+    elif key.endswith('.hwp'):
+        file_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".hwp"
+        bucket = bucket_name
+        key = key
+        s3_client.download_file(bucket, key, file_name)
+        text = await extract_text_from_hwp(file_name)
     else:
         raise ValueError('Unsupported file type')
     return text
@@ -402,7 +254,7 @@ async def coverletter(item: coverletterItem):
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=4096,
         temperature=1,
-        system= system_coverletter,
+        system= SYSTEM_COVERLETTER,
         messages=[
             {
                 "role": "user",
@@ -472,7 +324,7 @@ async def chat(item: chatItem):
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=4096,
         temperature=1,
-        system= system_chat,
+        system= SYSTEM_CHAT,
         messages=[
             {
                 "role": "user",
@@ -528,7 +380,7 @@ async def chat(item: chatItem):
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=4096,
         temperature=1,
-        system= system_chat,
+        system= SYSTEM_CHAT,
         messages=[
             {
                 "role": "user",
@@ -601,7 +453,7 @@ async def chat(item: chatItem):
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=4096,
         temperature=1,
-        system= system_chat,
+        system= SYSTEM_CHAT,
         messages=[
             {
                 "role": "user",
@@ -692,7 +544,7 @@ async def chat(item: chatItem):
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=4096,
         temperature=1,
-        system= system_chat,
+        system= SYSTEM_CHAT,
         messages=[
             {
                 "role": "user",
@@ -801,7 +653,7 @@ async def chat(item: chatItem):
         temperature=1,
         top_k=500,
         top_p= 1,
-        system= system_chat,
+        system= SYSTEM_CHAT,
         messages=[
             {
                 "role": "user",
@@ -926,7 +778,7 @@ async def chat(item: chatItem):
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=4096,
         temperature=1,
-        system= system_chat,
+        system= SYSTEM_CHAT,
         messages=[
             {
                 "role": "user",
@@ -1069,7 +921,7 @@ async def chat(item: chatItem):
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=4096,
         temperature=1,
-        system= system_chat,
+        system= SYSTEM_CHAT,
         messages=[
             {
                 "role": "user",
@@ -1230,7 +1082,7 @@ async def chat(item: chatItem):
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=4096,
         temperature=1,
-        system= system_chat,
+        system= SYSTEM_CHAT,
         messages=[
             {
                 "role": "user",
@@ -1409,7 +1261,7 @@ async def chat(item: chatItem):
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=4096,
         temperature=1,
-        system= system_chat,
+        system= SYSTEM_CHAT,
         messages=[
             {
                 "role": "user",
@@ -1637,7 +1489,7 @@ async def report(item: reportItem):
         model="anthropic.claude-3-5-sonnet-20240620-v1:0",
         max_tokens=10000,
         temperature=1,
-        system= system_report,
+        system= SYSTEM_REPORT,
         messages=[
             {
                 "role": "user",

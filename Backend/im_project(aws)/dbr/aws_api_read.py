@@ -15,7 +15,7 @@ from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.exporter.otlp.proto.grpc._log_exporter import OTLPLogExporter
-from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler 
+from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
 from opentelemetry._logs import (
@@ -27,7 +27,7 @@ from opentelemetry._logs import (
 )
 
 # 테스트 방법
-# uvicorn aws_api_read:app --host 0.0.0.0 --port 8000 --reload
+# uvicorn aws_api_read:app --host 0.0.0.0 --port 8003 --reload
 
 app = FastAPI()
 
@@ -37,10 +37,10 @@ load_dotenv()
 # COSRS옵션 부여
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # 어느곳에서 접근을 허용할 것이냐
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"], # 어떤 메서드에 대해서 허용할 것이냐("GET", "POST")
-    allow_headers=["*"], 
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # DynamoDB 연결 설정
@@ -72,7 +72,7 @@ def otel_logging_init():
     # DEBUG = 10
     # NOTSET = 0
     # default = WARNING
-    
+
     # ------------ Opentelemetry loging initialization
     logger_provider = LoggerProvider(
         resource=Resource.create({})
@@ -81,7 +81,7 @@ def otel_logging_init():
     otlp_log_exporter = OTLPLogExporter(endpoint=otel_endpoint_url)
     logger_provider.add_log_record_processor(BatchLogRecordProcessor(otlp_log_exporter))
     otel_log_handler = FormattedLoggingHandler(logger_provider=logger_provider)
-    
+
     LoggingInstrumentor().instrument()
     logFormatter = logging.Formatter(os.getenv("OTEL_PYTHON_LOG_FORMAT", None))
     otel_log_handler.setFormatter(logFormatter)
@@ -123,7 +123,6 @@ async def get_uuid():
 # 호출시 auth로 redirect해서 인증 진행
 @app.get("/dbr/act/kakao")
 def kakao():
-    logger.info('LOGIN')
     kakao_client_key = os.getenv("KAKAO_CLIENT_KEY")
     if os.getenv("env") == "eks":
         kakao_url = os.getenv("KAKAO_REDIRECT_EKS_URI")
@@ -158,6 +157,7 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
     kakao_secret_key = os.getenv("KAKAO_SECRET_KEY")
     if os.getenv("env") == "eks":
         kakao_url = os.getenv("KAKAO_REDIRECT_EKS_URI")
+        db_check_url = os.getenv("DB_CHECK_EKS_URI")
     elif os.getenv("env") == "k8s":
         kakao_url = os.getenv("KAKAO_REDIRECT_K8S_URI")
         db_check_url = os.getenv("DB_CHECK_K8S_URI")
@@ -203,24 +203,27 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
             }
         )
         
+        user_info = itm_user_info.get('Item', {})
+        user_history = itm_user_history.get('Item', {})
+        
         user = {
             "user_id": email,
             "user_info": {
-                "user_uuid": itm_user_info['Item'].get('user_uuid', ''),
-                "user_nm": itm_user_info['Item'].get('user_nm', ''),
-                "user_nicknm": itm_user_info['Item'].get('user_nicknm', ''),
-                "user_gender": itm_user_info['Item'].get('user_gender', ''),
-                "user_birthday": itm_user_info['Item'].get('user_birthday', ''),
-                "user_tel": itm_user_info['Item'].get('user_tel', '')
+                "user_uuid": user_info.get('user_uuid', ''),
+                "user_nm": user_info.get('user_nm', ''),
+                "user_nicknm": user_info.get('user_nicknm', ''),
+                "user_gender": user_info.get('user_gender', ''),
+                "user_birthday": user_info.get('user_birthday', ''),
+                "user_tel": user_info.get('user_tel', '')
             },
             "user_history": {
-                "user_itv_cnt": itm_user_history['Item'].get('user_itv_cnt', 0)
+                "user_itv_cnt": user_history.get('user_itv_cnt', 0)
             }
         }
-        
+
         # user정보가 없을 경우에는 false값 넘겨줘서 신규가입 화면으로
         # user정보가 있을 경우에는 true값 넘겨줘서 마이페이지 확인 화면 or 메인페이지로
-        if not user:
+        if not user_info:
             print("*****user info DB result*****\n신규유저\n ", user, "\n*****************************")
             url = f"{db_check_url}/auth?email_id={email}&access_token={access_token}&message=new"
         else:
@@ -235,13 +238,13 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
 
 
 # kakao 로그아웃
+# http://192.168.0.66:8002/act/kakao/logout
 # access_token받아야 로그아웃 처리 가능
 class ItemToken(BaseModel):
     access_token: str
 
 @app.post("/dbr/act/kakao/logout")
 def kakaoLogout(item: ItemToken, response: Response):
-    logger.info('LOGOUT')
     try:
         access_token = item.access_token
         
@@ -251,6 +254,7 @@ def kakaoLogout(item: ItemToken, response: Response):
         result = res.json()
         
         print("*****Logout result*****\n", result, "\n***********************")
+        logger.info(f'로그아웃: {access_token}')
         
         if res.status_code != 200:
             raise HTTPException(status_code=res.status_code, detail="Failed to logout from Kakao")
@@ -264,10 +268,10 @@ def kakaoLogout(item: ItemToken, response: Response):
 
 
 # kakao 로그아웃(강제)
+# http://192.168.0.66:8002/act/kakao/kill
 # access_token받아야 로그아웃 처리 가능
 @app.get("/dbr/act/kakao/kill/{token}")
 def kakaokill(token: str, response: Response):
-    logger.info('LOGOUT')
     try:
         # 액세스 토큰(강제 kill)
         access_token = token
@@ -278,6 +282,7 @@ def kakaokill(token: str, response: Response):
         result = res.json()
         
         print("*****Logout result*****\n", result, "\n***********************")
+        logger.info(f'로그아웃: {access_token}')
         
         if res.status_code != 200:
             raise HTTPException(status_code=res.status_code, detail="Failed to logout from Kakao")
@@ -398,21 +403,21 @@ async def get_itv(user_id: str):
                 "qs_content": qs_item.get('qs_content', ''),
                 "qs_video_url": qs_item.get('qs_video_url', ''),
                 "qs_audio_url": qs_item.get('qs_audio_url', ''),
-                "qs_text_url": qs_item.get('qs_text_url', ''),
-                "qs_fb_url": qs_item.get('qs_fb_url', '')
+                "qs_text_url": qs_item.get('qs_text_url', '')
             }
         
         itv_data = {
             "itv_sub": itv_item.get('itv_sub', ''),
-            "itv_text_url": itv_item.get('itv_text_url', ''),
+            "itv_date": itv_item.get('itv_date', ''),
             "itv_cate": itv_item.get('itv_cate', ''),
             "itv_job": itv_item.get('itv_job', ''),
+            "itv_text_url": itv_item.get('itv_text_url', ''),
+            "itv_fb_url": qs_item.get('itv_fb_url', ''),
             "itv_qs_cnt": itv_item.get('itv_qs_cnt', ''),
-            "itv_date": itv_item.get('itv_date', ''),
             "qs_info": itm_qs_info_list
         }
         itm_itv_info_list[itv_no] = itv_data
-        
+    
     data = {
         "user_id": user_id,
         "user_history": {
@@ -431,7 +436,7 @@ async def get_itv(user_id: str):
 @app.get("/dbr/get_itv/{user_id}/{itv_no}")
 async def get_itv_detail(user_id: str, itv_no: str):
     logger.info('REPORT 정보 조회')
-
+    
     # info 조회
     itm_user_info = tb_itm.get_item(
         Key={
@@ -439,7 +444,7 @@ async def get_itv_detail(user_id: str, itv_no: str):
             'SK': 'info'
         }
     )
-
+    
     # itv 조회
     itm_user_itv = tb_itm.get_item(
         Key={
@@ -447,37 +452,37 @@ async def get_itv_detail(user_id: str, itv_no: str):
             'SK': f'i#{itv_no}'
         }
     )
-
+    
     itv_item = itm_user_itv['Item']
     itv_no = itv_item['SK'].replace('i#', '')
-
+    
     # qs 조회
     itm_qs_info = tb_itm.query(
         KeyConditionExpression=Key('PK').eq(itv_item['SK'] + '#qs_info')
     )
     itm_qs_info_list = {}
-
+    
     for qs_item in itm_qs_info.get('Items', []):
         qs_no = qs_item['SK'].replace('q#', '')
-
+        
         itm_qs_info_list[qs_no] = {
             "qs_content": qs_item.get('qs_content', ''),
             "qs_video_url": qs_item.get('qs_video_url', ''),
             "qs_audio_url": qs_item.get('qs_audio_url', ''),
             "qs_text_url": qs_item.get('qs_text_url', ''),
-            "qs_fb_url": qs_item.get('qs_fb_url', '')
         }
     
     itv_data = {
         "itv_sub": itv_item.get('itv_sub', ''),
-        "itv_text_url": itv_item.get('itv_text_url', ''),
+        "itv_date": itv_item.get('itv_date', ''),
         "itv_cate": itv_item.get('itv_cate', ''),
         "itv_job": itv_item.get('itv_job', ''),
+        "itv_text_url": itv_item.get('itv_text_url', ''),
+        "itv_fb_url": itv_item.get('itv_db_url', ''),
         "itv_qs_cnt": itv_item.get('itv_qs_cnt', ''),
-        "itv_date": itv_item.get('itv_date', ''),
         "qs_info": itm_qs_info_list
     }
-
+    
     data = {
         "user_id": user_id,
         "itv_info": {
