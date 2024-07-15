@@ -6,7 +6,7 @@ from pymongo import MongoClient
 from pydantic import BaseModel
 from datetime import datetime
 import os, uuid, re, logging
-import boto3
+import boto3, base64
 from boto3.dynamodb.conditions import Key
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -50,7 +50,16 @@ dynamodb = boto3.resource(
     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
     region_name=os.getenv("AWS_REGION")
 )
-tb_itm = dynamodb.Table("ITM-PRD-DYN-TBL")
+tb_itm=dynamodb.Table("ITM-PRD-DYN-TBL")
+
+# KMS 연결 설정
+kms = boto3.client(
+    'kms',
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    region_name=os.getenv("AWS_REGION")
+)
+kms_id=os.getenv("AWS_KMS_ID")
 
 # LOG
 otel_endpoint_url = os.getenv("OTEL_ENDPOINT_URL", 'http://opentelemetry-collector.istio-system.svc.cluster.local:4317')
@@ -121,6 +130,11 @@ async def create_user(item: ItemUser):
         if not all([user_id, user_nm, user_nicknm, user_gender, user_birthday, user_tel]):
             raise HTTPException(status_code=400, detail="Missing required fields")
         
+        # 전화번호 암호화
+        encrypted_user_tel = base64.b64encode(
+            kms.encrypt(KeyId=key_id, Plaintext=user_tel.encode('utf-8'))['CiphertextBlob']
+        ).decode('utf-8')
+        
         new_user_info = {
             'PK': f'u#{user_id}',
             'SK': 'info',
@@ -129,7 +143,7 @@ async def create_user(item: ItemUser):
             'user_nicknm': user_nicknm,
             'user_gender': user_gender,
             'user_birthday': user_birthday,
-            'user_tel': user_tel
+            'user_tel': encrypted_user_tel
         }
         
         new_user_history = {
@@ -234,6 +248,9 @@ async def mod_user(item: ItemUser):
             update_fields["user_birthday"] = user_birthday
         
         if user_tel is not None and user_tel != data["user_info"].get("user_tel"):
+            encrypted_user_tel = base64.b64encode(
+                kms.encrypt(KeyId=key_id, Plaintext=user_tel.encode('utf-8'))['CiphertextBlob']
+            ).decode('utf-8')
             update_expression += "#user_tel = :user_tel, "
             expression_attribute_values[":user_tel"] = user_tel
             expression_attribute_names["#user_tel"] = "user_tel"
