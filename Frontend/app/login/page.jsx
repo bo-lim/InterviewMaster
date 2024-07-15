@@ -20,6 +20,7 @@ const Login = () => {
     window.location.href = url;
 
   
+  
      // 임시 로그인
     // const response = await getUserList("ygang4546@gmail.com");
     // cookies.set('user_id', response.user_id);

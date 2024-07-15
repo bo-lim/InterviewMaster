@@ -101,11 +101,11 @@ const Interview = () => {
     postVideo();
     recorderControls.startRecording();
     // Start the countdown timer
-    setCountdown(5);
+    setCountdown(3);
     setMessage("");  // Clear any previous message
     const timer = setInterval(() => {
       setCountdown(prevCount => {
-        if (prevCount === 3) {
+        if (prevCount === 1) {
           clearInterval(timer);
           setCountdown(null);
           setMessage("지금 말씀해주세요");
