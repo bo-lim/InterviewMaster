@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 from typing import Optional
 from pymongo import MongoClient
 from pydantic import BaseModel
-import os, uuid, requests
-import boto3
+import os, uuid, requests, logging
+import boto3, base64
 from boto3.dynamodb.conditions import Key
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -50,7 +50,16 @@ dynamodb = boto3.resource(
     aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
     region_name=os.getenv("AWS_REGION")
 )
-tb_itm = dynamodb.Table("ITM-PRD-DYN-TBL")
+tb_itm=dynamodb.Table("ITM-PRD-DYN-TBL")
+
+# KMS 연결 설정
+kms = boto3.client(
+    'kms',
+    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    region_name=os.getenv("AWS_REGION")
+)
+kms_id=os.getenv("AWS_KMS_ID")
 
 # LOG
 otel_endpoint_url = os.getenv("OTEL_ENDPOINT_URL", 'http://opentelemetry-collector.istio-system.svc.cluster.local:4317')
@@ -116,6 +125,39 @@ async def get_uuid():
 
 
 
+# 전화번호 복호화 함수
+def decrypt_user_tel(encrypted_tel: str) -> str:
+    response = kms.decrypt(
+        CiphertextBlob=base64.b64decode(encrypted_tel)
+    )
+    return response['Plaintext'].decode('utf-8')
+
+# 전화번호 복호화 값 조회
+@app.get("/dbr/get_tel/{user_id}")
+async def get_tel(user_id: str):
+    # info 조회
+    itm_user_info = tb_itm.get_item(
+        Key={
+            'PK': f'u#{user_id}',
+            'SK': 'info'
+        }
+    )
+    
+    # 전화번호 복호화
+    encrypted_user_tel = itm_user_info['Item'].get('user_tel', '')
+    decrypted_user_tel = decrypt_user_tel(encrypted_user_tel) if encrypted_user_tel else ''
+    
+    data = {
+        "user_id": user_id,
+        "user_info": {
+            "user_nm": itm_user_info['Item'].get('user_nm', ''),
+            "user_tel": decrypted_user_tel
+        }
+    }
+    return data
+    
+
+
 ###########################
 ########## OAuth ##########
 ###########################
@@ -123,7 +165,6 @@ async def get_uuid():
 # 호출시 auth로 redirect해서 인증 진행
 @app.get("/dbr/act/kakao")
 def kakao():
-    logger.info('LOGIN')
     kakao_client_key = os.getenv("KAKAO_CLIENT_KEY")
     if os.getenv("env") == "eks":
         kakao_url = os.getenv("KAKAO_REDIRECT_EKS_URI")
@@ -158,6 +199,7 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
     kakao_secret_key = os.getenv("KAKAO_SECRET_KEY")
     if os.getenv("env") == "eks":
         kakao_url = os.getenv("KAKAO_REDIRECT_EKS_URI")
+        db_check_url = os.getenv("DB_CHECK_EKS_URI")
     elif os.getenv("env") == "k8s":
         kakao_url = os.getenv("KAKAO_REDIRECT_K8S_URI")
         db_check_url = os.getenv("DB_CHECK_K8S_URI")
@@ -203,28 +245,33 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
             }
         )
         
+        user_info = itm_user_info.get('Item', {})
+        user_history = itm_user_history.get('Item', {})
+        
         user = {
             "user_id": email,
             "user_info": {
-                "user_uuid": itm_user_info['Item'].get('user_uuid', ''),
-                "user_nm": itm_user_info['Item'].get('user_nm', ''),
-                "user_nicknm": itm_user_info['Item'].get('user_nicknm', ''),
-                "user_gender": itm_user_info['Item'].get('user_gender', ''),
-                "user_birthday": itm_user_info['Item'].get('user_birthday', ''),
-                "user_tel": itm_user_info['Item'].get('user_tel', '')
+                "user_uuid": user_info.get('user_uuid', ''),
+                "user_nm": user_info.get('user_nm', ''),
+                "user_nicknm": user_info.get('user_nicknm', ''),
+                "user_gender": user_info.get('user_gender', ''),
+                "user_birthday": user_info.get('user_birthday', ''),
+                "user_tel": user_info.get('user_tel', '')
             },
             "user_history": {
-                "user_itv_cnt": itm_user_history['Item'].get('user_itv_cnt', 0)
+                "user_itv_cnt": user_history.get('user_itv_cnt', 0)
             }
         }
         
         # user정보가 없을 경우에는 false값 넘겨줘서 신규가입 화면으로
         # user정보가 있을 경우에는 true값 넘겨줘서 마이페이지 확인 화면 or 메인페이지로
-        if not user:
+        if not user_info:
             print("*****user info DB result*****\n신규유저\n ", user, "\n*****************************")
+            logger.info(f'카카오 회원가입: {email}, {access_token}')
             url = f"{db_check_url}/auth?email_id={email}&access_token={access_token}&message=new"
         else:
             print("*****user info DB result*****\n기존유저\n ", user, "\n*****************************")
+            logger.info(f'카카오 로그인: {email}, {access_token}')
             url = f"{db_check_url}/auth?email_id={email}&access_token={access_token}&message=main"
         
         response = RedirectResponse(url)
@@ -242,7 +289,6 @@ class ItemToken(BaseModel):
 
 @app.post("/dbr/act/kakao/logout")
 def kakaoLogout(item: ItemToken, response: Response):
-    logger.info('LOGOUT')
     try:
         access_token = item.access_token
         
@@ -252,6 +298,7 @@ def kakaoLogout(item: ItemToken, response: Response):
         result = res.json()
         
         print("*****Logout result*****\n", result, "\n***********************")
+        logger.info(f'로그아웃: {access_token}')
         
         if res.status_code != 200:
             raise HTTPException(status_code=res.status_code, detail="Failed to logout from Kakao")
@@ -269,7 +316,6 @@ def kakaoLogout(item: ItemToken, response: Response):
 # access_token받아야 로그아웃 처리 가능
 @app.get("/dbr/act/kakao/kill/{token}")
 def kakaokill(token: str, response: Response):
-    logger.info('LOGOUT')
     try:
         # 액세스 토큰(강제 kill)
         access_token = token
@@ -280,6 +326,7 @@ def kakaokill(token: str, response: Response):
         result = res.json()
         
         print("*****Logout result*****\n", result, "\n***********************")
+        logger.info(f'로그아웃: {access_token}')
         
         if res.status_code != 200:
             raise HTTPException(status_code=res.status_code, detail="Failed to logout from Kakao")
@@ -317,6 +364,10 @@ async def get_user(user_id: str):
         }
     )
     
+    # 전화번호 복호화
+    encrypted_user_tel = itm_user_info['Item'].get('user_tel', '')
+    decrypted_user_tel = decrypt_user_tel(encrypted_user_tel) if encrypted_user_tel else ''
+    
     data = {
         "user_id": user_id,
         "user_info": {
@@ -325,7 +376,7 @@ async def get_user(user_id: str):
             "user_nicknm": itm_user_info['Item'].get('user_nicknm', ''),
             "user_gender": itm_user_info['Item'].get('user_gender', ''),
             "user_birthday": itm_user_info['Item'].get('user_birthday', ''),
-            "user_tel": itm_user_info['Item'].get('user_tel', '')
+            "user_tel": decrypted_user_tel
         },
         "user_history": {
             "user_itv_cnt": itm_user_history['Item'].get('user_itv_cnt', 0)

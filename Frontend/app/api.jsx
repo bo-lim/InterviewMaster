@@ -264,7 +264,7 @@ export async function postCV(formData) {
   try {
     // user_id 전송
     //`${process.env.CHAT_POST_API}/coverletter/`
-    const response = await fetch(`http://192.168.0.4:8888/question/coverletter/`, {
+    const response = await fetch(`${process.env.CHAT_POST_API}/coverletter/`, {
       method: 'POST',
       headers: {"Content-Type": "application/json",},
       body: JSON.stringify({
@@ -327,6 +327,7 @@ export async function postLogout(formData) {
 export async function get_kakao(){
   return `${process.env.GET_API}/act/kakao`
 }
+
 
 //회원가입
 export async function postSignup(formData) {
