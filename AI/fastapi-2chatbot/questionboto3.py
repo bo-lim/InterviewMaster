@@ -8,12 +8,13 @@ import logging
 import io
 from PyPDF2 import PdfReader
 from docx import Document
-from llama_index.readers.file import HWPReader
+# from llama_index.readers.file import HWPReader
 import boto3
 import json
 import redis
 from anthropic import AnthropicBedrock
 from datetime import datetime
+from botocore.exceptions import ClientError
 
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -79,7 +80,7 @@ app.add_middleware(
 )
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-otel_logging_init()
+# otel_logging_init()
 
 
 # 환경 변수 가져오기
@@ -111,15 +112,14 @@ s3_client = boto3.client(
     region_name= AWS_REGION
 )
 
-bedrock_client = AnthropicBedrock(
-    aws_access_key= AWS_ACCESS_KEY_ID,
-    aws_secret_key= AWS_SECRET_ACCESS_KEY,
-    aws_region= AWS_BEDROCK_REGION,
-)
-
+bedrock_client = boto3.client(
+    "bedrock-runtime",
+    aws_access_key_id= AWS_ACCESS_KEY_ID,
+    aws_secret_access_key= AWS_SECRET_ACCESS_KEY,
+    region_name= AWS_BEDROCK_REGION)
 # redis_client = redis.Redis(host='192.168.56.200', port=6379, decode_responses=True)
-# redis_client = redis.Redis(host='192.168.0.22', port=30637, password='k8spass#')
-redis_client = redis.Redis(host=AWS_ELASTICACHE_REDIS_ENDPOINT, port=6379, ssl=True, decode_responses=True, username=AWS_ELASTICACHE_REDIS_USER, password=AWS_ELASTICACHE_REDIS_PASSWORD)
+# redis_client = redis.Redis(host='192.168.0.15', port=30637, password='k8spass#')
+redis_client = redis.Redis(host=AWS_ELASTICACHE_REDIS_ENDPOINT, port=6379, decode_responses=True, ssl=True, username=AWS_ELASTICACHE_REDIS_USER, password=AWS_ELASTICACHE_REDIS_PASSWORD)
 
 class coverletterItem(BaseModel):
     coverletter_url: str
@@ -132,6 +132,8 @@ class chatItem(BaseModel):
 class reportItem(BaseModel):
     itv_no: str
     question_number: int
+
+model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0"
 
 async def store_history_redis(hash_name,field,value):
     try:
@@ -178,46 +180,34 @@ async def getall_history_redis(hash_name):
         return None
 async def parsing(url):
     async def extract_text_from_pdf(pdf_content):
-        try:
-            pdf_reader = PdfReader(io.BytesIO(pdf_content))
-            text = ''
-            for page in pdf_reader.pages:
-                text += page.extract_text()
-            return text
-        except:
-            logging.error('PDF File Parsing Error')
-            return ''
+        pdf_reader = PdfReader(io.BytesIO(pdf_content))
+        text = ''
+        for page in pdf_reader.pages:
+            text += page.extract_text()
+        return text
     
     async def extract_text_from_docx(docx_content):
-        try:
-            doc = Document(io.BytesIO(docx_content))
-            text = ''
-            for para in doc.paragraphs:
-                text += para.text
-            return text
-        except:
-            logging.error('DOCX File Parsing Error')
-            return ''
+        doc = Document(io.BytesIO(docx_content))
+        text = ''
+        for para in doc.paragraphs:
+            text += para.text
+        return text
     
     async def extract_text_from_txt(txt_content):
-        try:
-            return txt_content.decode('utf-8')
-        except:
-            logging.error('TXT File Parsing Error')
-            return ''
+        return txt_content.decode('utf-8')
     
     # async def extract_text_from_hwp(file_url):
     #     reader = HWPReader()
     #     documents = reader.load_data(file=file_url)
     #     return documents[0].text
+    # async def extract_text_from_hwp(hwp_content):
         
-    async def extract_text_from_hwp(hwp_content):
-        doc = HWPReader()
-        encoded_text = ''
-        for para in doc.load_data(hwp_content).values():
-            encoded_text += para
-        decoded_text = encoded_text.decode('utf-16')
-        return decoded_text
+    #     doc = HWPReader()
+    #     encoded_text = ''
+    #     for para in doc.load_data(hwp_content).values():
+    #         encoded_text += para
+    #     decoded_text = encoded_text.decode('utf-16')
+    #     return decoded_text
 
     async def parse_s3_url(url):
         if url.startswith('s3://'):
@@ -226,7 +216,6 @@ async def parsing(url):
             bucket_name = parts[0]
             key = parts[1] if len(parts) > 1 else ''
         else:
-            logging.error('Unsupported URL format')
             raise ValueError('Unsupported URL format')      
         return bucket_name, key
     
@@ -235,120 +224,88 @@ async def parsing(url):
     file_content = file_obj["Body"].read().strip()
 
     if key.endswith('.pdf'):
-        logger.info('PDF Parsing')
         text = await extract_text_from_pdf(file_content)
     elif key.endswith('.docx'):
-        logger.info('DOCX Parsing')
         text = await extract_text_from_docx(file_content)
     elif key.endswith('.txt'):
-        logger.info('TXT Parsing')
         text = await extract_text_from_txt(file_content)
-    elif key.endswith('.hwp'):
-        file_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".hwp"
-        bucket = bucket_name
-        key = key
-        s3_client.download_file(bucket, key, file_name)
-        text = await extract_text_from_hwp(file_name)
-        os.remove(file_name)
+    # elif key.endswith('.hwp'):
+    #     file_name = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".hwp"
+    #     bucket = bucket_name
+    #     key = key
+    #     s3_client.download_file(bucket, key, file_name)
+    #     text = await extract_text_from_hwp(file_name)
     else:
-        logging.error('Unsupported file type')
         raise ValueError('Unsupported file type')
     return text
 
 @app.post("/question/coverletter", status_code=200)
 async def coverletter(item: coverletterItem):
-    start_time1 = datetime.now()
     coverletter_url = item.coverletter_url
     position = item.position
     itv_no = item.itv_no
-    logging.info(f'자기소개서 API 호출 itv_no: {itv_no}')
-  
+
     if not coverletter_url :
         return {'response': 'coverletter_urls are missing'}
     print(coverletter_url)
-    logger.info(f'자기소개서 URL: {coverletter_url}, 직무: {position}')
     coverletter_text = await parsing(coverletter_url)
-    end_time1 = datetime.now()
-    elapsed_time = end_time1 - start_time1
-    logger.info(f'자기소개서 Parsing SEC:{elapsed_time.total_seconds()}')
-    # print(coverletter_text)
+    print(coverletter_text)
 
     prompt = f"자기소개서: {coverletter_text}\n직무: {position}"
-    start_time = datetime.now()
-    message = bedrock_client.messages.create(
-        model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-        max_tokens=4096,
-        temperature=1,
-        system= SYSTEM_COVERLETTER,
-        messages=[
+
+    message = {
+        "anthropic_version":"bedrock-2023-05-31",
+        "max_tokens":4096,
+        "temperature":1,
+        "system": SYSTEM_COVERLETTER,
+        "messages":[
             {
                 "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": prompt,
-                    }
-                ]
+                "content": [{"type": "text", "text": prompt}],
             }
-        ]
-    )
-    message_content = message.content[0].text
-    start_index = message_content.find('{')
-    end_index = message_content.rfind('}') + 1
-    response1_text = message_content[start_index:end_index]
-    
-    end_time = datetime.now()
-    elapsed_time = end_time - start_time
-    logger.info(f'Bedrock 첫 질문 생성 SEC:{elapsed_time.total_seconds()}')
-    input_tokens = message.usage.input_tokens
-    output_tokens = message.usage.output_tokens
-    cost = round((input_tokens * 0.000003 + output_tokens * 0.000015) * 1381, 3)
-    logger.info(f'Bedrock cost:{cost}')
-    print("Response Text:", response1_text)
+        ],
+    }
+    request = json.dumps(message)
 
     try:
-        response = json.loads(response1_text).get("question")
+        # Invoke the model with the request.
+        messages = bedrock_client.invoke_model(modelId=model_id, body=request)
+        response_text = messages.content[0].text
+        response = json.loads(response_text).get("question")
+        print("Response:", messages)
         await store_history_redis(itv_no,"coverletter",prompt)
         await store_history_redis(itv_no,"question-1",response)
         print("Response:", response)
 
-    except json.JSONDecodeError as e:
-        logging.error('JSONDecodeError')
-        print("JSONDecodeError:", e)
-        response = None
+    except (ClientError, Exception) as e:
+        print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
 
     if response:
         # tts, question = self.extract_question(response)
-        end_time = datetime.now()
-        elapsed_time = end_time - start_time
         coverletter = await get_history_redis(itv_no,"coverletter")
         initial_question = await get_history_redis(itv_no,"question-1")
         
         print("Complete history from Redis:")
         print(coverletter)
         print(initial_question)
-        logger.info(f'질문 생성 후 Redis 업데이트 SEC:{elapsed_time.total_seconds()}')
-        logger.info(f'첫 질문: {initial_question}')
         return {'response': response}
     else:
-        logger.error('질문 생성 실패')
-        return {'response': response1_text}
+        return {'response': 'No messages'}
 
 @app.post("/question/chat", status_code=200)
 async def chat(item: chatItem):
     answer_url = item.answer_url
     itv_no = item.itv_no
     question_number = item.question_number 
-    logger.info(f'질문 생성 API 호출 itv_no: {itv_no}')
-    
+
     answer_text = await parsing(answer_url)
-    logger.info('STT File Parsing 완료')
 
     # 질문과 답변 저장을 위한 리스트 초기화
     questions = []
     answers = []
     await store_history_redis(itv_no,f"answer-{question_number-1}",answer_text)
-    logger.info('Redis 저장 완료')
+
+    print("Complete history from Redis:")
     print(answer_text)
     # 반복문을 사용하여 질문과 답변 생성
     cover_letter = await get_history_redis(itv_no, "coverletter")
@@ -360,17 +317,15 @@ async def chat(item: chatItem):
         answers.append(answer)
 
         prompt = f"대답: {answer_text}"
-    logger.info('이전 질문 및 답변 Redis에서 GET 완료')
-    
+
     ## 꼬리 질문 생성
-    start_time = datetime.now()
     if question_number ==2:
-        response2 = bedrock_client.messages.create(
-        model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-        max_tokens=4096,
-        temperature=1,
-        system= SYSTEM_CHAT,
-        messages=[
+        message2 = {
+        "anthropic_version":"bedrock-2023-05-31",
+        "max_tokens":4096,
+        "temperature":1,
+        "system": SYSTEM_CHAT,
+        "messages":[
             {
                 "role": "user",
                 "content": [
@@ -399,30 +354,16 @@ async def chat(item: chatItem):
                 ]
             }
         ]
-    )
-        print(response2)
-        message_content = response2.content[0].text
-        start_index = message_content.find('{')
-        end_index = message_content.rfind('}') + 1
-        response2_text = message_content[start_index:end_index]
-        
-        end_time = datetime.now()
-        elapsed_time = end_time - start_time
-        logger.info(f'Bedrock 질문 생성 SEC:{elapsed_time.total_seconds()}')
-        input_tokens = response2.usage.input_tokens
-        output_tokens = response2.usage.output_tokens
-        cost = round((input_tokens * 0.000003 + output_tokens * 0.000015) * 1381, 3)
-        logger.info(f'Bedrock cost:{cost}')
-
-
-        print("Response Text:", response2_text)
+        }
+        request = json.dumps(message2)
         try:
+            messages = bedrock_client.invoke_model(modelId=model_id, body=request)
+            response2_text = messages.content[0].text
             response = json.loads(response2_text).get("question")
-            # print("Response:", response)
+            print("Response:", messages)
 
-        except json.JSONDecodeError as e:
-            print("JSONDecodeError:", e)
-            response = None
+        except (ClientError, Exception) as e:
+            print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
         
         await store_history_redis(itv_no,f"question-{question_number}",response)
         print("Complete history from Redis:")
@@ -430,19 +371,17 @@ async def chat(item: chatItem):
 
         if response:
             # tts, question = self.extract_question(response)
-            logger.info(f'질문: {response}')
             return {'response': response}
         else:
-            logger.error('질문 생성 실패')
-            return {'response': response2_text}
+            return {'response': 'No messages'}
         
     elif question_number == 3:
-        response3 = bedrock_client.messages.create(
-        model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-        max_tokens=4096,
-        temperature=1,
-        system= SYSTEM_CHAT,
-        messages=[
+        message3 = {
+        "anthropic_version":"bedrock-2023-05-31",
+        "max_tokens":4096,
+        "temperature":1,
+        "system": SYSTEM_CHAT,
+        "messages":[
             {
                 "role": "user",
                 "content": [
@@ -489,43 +428,34 @@ async def chat(item: chatItem):
                 ]
             }
         ]
-    )
-        print(response3)
-        message_content = response3.content[0].text
-        start_index = message_content.find('{')
-        end_index = message_content.rfind('}') + 1
-        response3_text = message_content[start_index:end_index]
-        
-        end_time = datetime.now()
-        elapsed_time = end_time - start_time
-        logger.info(f'Bedrock 질문 생성 SEC:{elapsed_time.total_seconds()}')
-        
+        }
+        request = json.dumps(message3)
         try:
+            messages = bedrock_client.invoke_model(modelId=model_id, body=request)
+            response3_text = messages.content[0].text
             response = json.loads(response3_text).get("question")
-            # print("Response:", response)
+            print("Response:", messages)
 
-        except json.JSONDecodeError as e:
-            print("JSONDecodeError:", e)
-            response = None
+        except (ClientError, Exception) as e:
+            print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
+        
         await store_history_redis(itv_no,f"question-{question_number}",response)
         print("Complete history from Redis:")
         print(response)
 
         if response:
             # tts, question = self.extract_question(response)
-            logger.info(f'질문: {response}')
             return {'response': response}
         else:
-            logger.error('질문 생성 실패')
-            return {'response': response3_text}
+            return {'response': 'No messages'}
 
     elif question_number == 4:
-        response4 = bedrock_client.messages.create(
-        model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-        max_tokens=4096,
-        temperature=1,
-        system= SYSTEM_CHAT,
-        messages=[
+        message4 = {
+        "anthropic_version":"bedrock-2023-05-31",
+        "max_tokens":4096,
+        "temperature":1,
+        "system": SYSTEM_CHAT,
+        "messages":[
             {
                 "role": "user",
                 "content": [
@@ -590,47 +520,34 @@ async def chat(item: chatItem):
                 ]
             }
         ]
-    )
-        print(response4)
-        message_content = response4.content[0].text
-        start_index = message_content.find('{')
-        end_index = message_content.rfind('}') + 1
-        response4_text = message_content[start_index:end_index]
-
-        end_time = datetime.now()
-        elapsed_time = end_time - start_time
-        logger.info(f'Bedrock 질문 생성 SEC:{elapsed_time.total_seconds()}')
-        input_tokens = response4.usage.input_tokens
-        output_tokens = response4.usage.output_tokens
-        cost = round((input_tokens * 0.000003 + output_tokens * 0.000015) * 1381, 3)
-        logger.info(f'Bedrock cost :{cost}')
-        
+    }
+        request = json.dumps(message4)
         try:
+            messages = bedrock_client.invoke_model(modelId=model_id, body=request)
+            response4_text = messages.content[0].text
             response = json.loads(response4_text).get("question")
-            # print("Response:", response)
+            print("Response:", messages)
 
-        except json.JSONDecodeError as e:
-            print("JSONDecodeError:", e)
-            response = None
+        except (ClientError, Exception) as e:
+            print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
+        
         await store_history_redis(itv_no,f"question-{question_number}",response)
         print("Complete history from Redis:")
         print(response)
 
         if response:
             # tts, question = self.extract_question(response)
-            logger.info(f'질문: {response}')
             return {'response': response}
         else:
-            logger.error('질문 생성 실패')
-            return {'response': response4_text}
+            return {'response': 'No messages'}
         
     elif question_number == 5:
-        response5 = bedrock_client.messages.create(
-        model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-        max_tokens=4096,
-        temperature=1,
-        system= SYSTEM_CHAT,
-        messages=[
+        message5 = {
+        "anthropic_version":"bedrock-2023-05-31",
+        "max_tokens":4096,
+        "temperature":1,
+        "system": SYSTEM_CHAT,
+        "messages":[
             {
                 "role": "user",
                 "content": [
@@ -713,48 +630,34 @@ async def chat(item: chatItem):
                 ]
             }
         ]
-    )
-        print(response5)
-        message_content = response5.content[0].text
-        start_index = message_content.find('{')
-        end_index = message_content.rfind('}') + 1
-        response5_text = message_content[start_index:end_index]
-        
-        end_time = datetime.now()
-        elapsed_time = end_time - start_time
-        logger.info(f'Bedrock 질문 생성 SEC:{elapsed_time.total_seconds()}')
-        input_tokens = response5.usage.input_tokens
-        output_tokens = response5.usage.output_tokens
-        cost = round((input_tokens * 0.000003 + output_tokens * 0.000015) * 1381, 3)
-        logger.info(f'Bedrock cost :{cost}')
-        
+    }
+        request = json.dumps(message5)
         try:
+            messages = bedrock_client.invoke_model(modelId=model_id, body=request)
+            response5_text = messages.content[0].text
             response = json.loads(response5_text).get("question")
-            # print("Response:", response)
+            print("Response:", messages)
 
-        except json.JSONDecodeError as e:
-            print("JSONDecodeError:", e)
-            response = None
+        except (ClientError, Exception) as e:
+            print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
+        
         await store_history_redis(itv_no,f"question-{question_number}",response)
         print("Complete history from Redis:")
         print(response)
 
         if response:
             # tts, question = self.extract_question(response)
-            logger.info(f'질문: {response}')
             return {'response': response}
         else:
-            logger.error('질문 생성 실패')
-            return {'response': response5_text}
+            return {'response': 'No messages'}
+        
     elif question_number == 6:
-        response6 = bedrock_client.messages.create(
-        model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-        max_tokens=4096,
-        temperature=1,
-        top_k=500,
-        top_p= 1,
-        system= SYSTEM_CHAT,
-        messages=[
+        message6 = {
+        "anthropic_version":"bedrock-2023-05-31",
+        "max_tokens":4096,
+        "temperature":1,
+        "system": SYSTEM_CHAT,
+        "messages":[
             {
                 "role": "user",
                 "content": [
@@ -855,45 +758,34 @@ async def chat(item: chatItem):
                 ]
             }
         ]
-    )
-        print(response6)
-        message_content = response6.content[0].text
-        start_index = message_content.find('{')
-        end_index = message_content.rfind('}') + 1
-        response6_text = message_content[start_index:end_index]
-        
-        end_time = datetime.now()
-        elapsed_time = end_time - start_time
-        logger.info(f'Bedrock 질문 생성 SEC:{elapsed_time.total_seconds()}')
-        input_tokens = response6.usage.input_tokens
-        output_tokens = response6.usage.output_tokens
-        cost = round((input_tokens * 0.000003 + output_tokens * 0.000015) * 1381, 3)
-        logger.info(f'Bedrock cost :{cost}')
+    }
+        request = json.dumps(message6)
         try:
+            messages = bedrock_client.invoke_model(modelId=model_id, body=request)
+            response6_text = messages.content[0].text
             response = json.loads(response6_text).get("question")
-            # print("Response:", response)
+            print("Response:", messages)
 
-        except json.JSONDecodeError as e:
-            print("JSONDecodeError:", e)
-            response = None
+        except (ClientError, Exception) as e:
+            print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
+        
         await store_history_redis(itv_no,f"question-{question_number}",response)
         print("Complete history from Redis:")
         print(response)
 
         if response:
             # tts, question = self.extract_question(response)
-            logger.info(f'질문: {response}')
             return {'response': response}
         else:
-            logger.error('질문 생성 실패')
-            return {'response': response6_text}
+            return {'response': 'No messages'}
+        
     elif question_number == 7:
-        response7 = bedrock_client.messages.create(
-        model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-        max_tokens=4096,
-        temperature=1,
-        system= SYSTEM_CHAT,
-        messages=[
+        message7 = {
+        "anthropic_version":"bedrock-2023-05-31",
+        "max_tokens":4096,
+        "temperature":1,
+        "system": SYSTEM_CHAT,
+        "messages":[
             {
                 "role": "user",
                 "content": [
@@ -1012,45 +904,34 @@ async def chat(item: chatItem):
                 ]
             }
         ]
-    )
-        print(response7)
-        message_content = response7.content[0].text
-        start_index = message_content.find('{')
-        end_index = message_content.rfind('}') + 1
-        response7_text = message_content[start_index:end_index]
-        
-        end_time = datetime.now()
-        elapsed_time = end_time - start_time
-        logger.info(f'Bedrock 질문 생성 SEC:{elapsed_time.total_seconds()}')
-        input_tokens = response7.usage.input_tokens
-        output_tokens = response7.usage.output_tokens
-        cost = round((input_tokens * 0.000003 + output_tokens * 0.000015) * 1381, 3)
-        logger.info(f'Bedrock cost:{cost}')
+    }
+        request = json.dumps(message7)
         try:
+            messages = bedrock_client.invoke_model(modelId=model_id, body=request)
+            response7_text = messages.content[0].text
             response = json.loads(response7_text).get("question")
-            # print("Response:", response)
+            print("Response:", messages)
 
-        except json.JSONDecodeError as e:
-            print("JSONDecodeError:", e)
-            response = None
+        except (ClientError, Exception) as e:
+            print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
+        
         await store_history_redis(itv_no,f"question-{question_number}",response)
         print("Complete history from Redis:")
         print(response)
 
         if response:
             # tts, question = self.extract_question(response)
-            logger.info(f'질문: {response}')
             return {'response': response}
         else:
-            logger.error('질문 생성 실패')
-            return {'response': response7_text}
+            return {'response': 'No messages'}
+        
     elif question_number == 8:
-        response8 = bedrock_client.messages.create(
-        model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-        max_tokens=4096,
-        temperature=1,
-        system= SYSTEM_CHAT,
-        messages=[
+        message8 = {
+        "anthropic_version":"bedrock-2023-05-31",
+        "max_tokens":4096,
+        "temperature":1,
+        "system": SYSTEM_CHAT,
+        "messages":[
             {
                 "role": "user",
                 "content": [
@@ -1187,45 +1068,34 @@ async def chat(item: chatItem):
                 ]
             }
         ]
-    )
-        print(response8)
-        message_content = response8.content[0].text
-        start_index = message_content.find('{')
-        end_index = message_content.rfind('}') + 1
-        response8_text = message_content[start_index:end_index]
-        
-        end_time = datetime.now()
-        elapsed_time = end_time - start_time
-        logger.info(f'Bedrock 질문 생성 SEC:{elapsed_time.total_seconds()}')
-        input_tokens = response8.usage.input_tokens
-        output_tokens = response8.usage.output_tokens
-        cost = round((input_tokens * 0.000003 + output_tokens * 0.000015) * 1381, 3)
-        logger.info(f'Bedrock cost:{cost}')
+    }
+        request = json.dumps(message8)
         try:
+            messages = bedrock_client.invoke_model(modelId=model_id, body=request)
+            response8_text = messages.content[0].text
             response = json.loads(response8_text).get("question")
-            # print("Response:", response)
+            print("Response:", messages)
 
-        except json.JSONDecodeError as e:
-            print("JSONDecodeError:", e)
-            response = None
+        except (ClientError, Exception) as e:
+            print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
+        
         await store_history_redis(itv_no,f"question-{question_number}",response)
         print("Complete history from Redis:")
         print(response)
 
         if response:
             # tts, question = self.extract_question(response)
-            logger.info(f'질문: {response}')
             return {'response': response}
         else:
-            logger.error('질문 생성 실패')
-            return {'response': response8_text}
+            return {'response': 'No messages'}
+        
     elif question_number == 9:
-        response9 = bedrock_client.messages.create(
-        model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-        max_tokens=4096,
-        temperature=1,
-        system= SYSTEM_CHAT,
-        messages=[
+        message9 = {
+        "anthropic_version":"bedrock-2023-05-31",
+        "max_tokens":4096,
+        "temperature":1,
+        "system": SYSTEM_CHAT,
+        "messages":[
             {
                 "role": "user",
                 "content": [
@@ -1380,44 +1250,34 @@ async def chat(item: chatItem):
                 ]
             }
         ]
-    )
-        message_content = response9.content[0].text
-        start_index = message_content.find('{')
-        end_index = message_content.rfind('}') + 1
-        response9_text = message_content[start_index:end_index]
-        
-        end_time = datetime.now()
-        elapsed_time = end_time - start_time
-        logger.info(f'Bedrock 질문 생성 SEC:{elapsed_time.total_seconds()}')
-        input_tokens = response9.usage.input_tokens
-        output_tokens = response9.usage.output_tokens
-        cost = round((input_tokens * 0.000003 + output_tokens * 0.000015) * 1381, 3)
-        logger.info(f'Bedrock cost:{cost}')
+    }
+        request = json.dumps(message9)
         try:
+            messages = bedrock_client.invoke_model(modelId=model_id, body=request)
+            response9_text = messages.content[0].text
             response = json.loads(response9_text).get("question")
-            # print("Response:", response)
+            print("Response:", messages)
 
-        except json.JSONDecodeError as e:
-            print("JSONDecodeError:", e)
-            response = None
+        except (ClientError, Exception) as e:
+            print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
+        
         await store_history_redis(itv_no,f"question-{question_number}",response)
         print("Complete history from Redis:")
         print(response)
 
         if response:
             # tts, question = self.extract_question(response)
-            logger.info(f'질문: {response}')
             return {'response': response}
         else:
-            logger.error('질문 생성 실패')
-            return {'response': response9_text}
+            return {'response': 'No messages'}
+        
     elif question_number == 10:
-        response10 = bedrock_client.messages.create(
-        model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-        max_tokens=4096,
-        temperature=1,
-        system= SYSTEM_CHAT,
-        messages=[
+        message10 = {
+        "anthropic_version":"bedrock-2023-05-31",
+        "max_tokens":4096,
+        "temperature":1,
+        "system": SYSTEM_CHAT,
+        "messages":[
             {
                 "role": "user",
                 "content": [
@@ -1590,46 +1450,32 @@ async def chat(item: chatItem):
                 ]
             }
         ]
-    )
-        print(response10)
-        message_content = response10.content[0].text
-        start_index = message_content.find('{')
-        end_index = message_content.rfind('}') + 1
-        response10_text = message_content[start_index:end_index]
-        
-        end_time = datetime.now()
-        elapsed_time = end_time - start_time
-        logger.info(f'Bedrock 질문 생성 SEC:{elapsed_time.total_seconds()}')
-        input_tokens = response10.usage.input_tokens
-        output_tokens = response10.usage.output_tokens
-        cost = round((input_tokens * 0.000003 + output_tokens * 0.000015) * 1381, 3)
-        logger.info(f'Bedrock cost:{cost}')
-        response10_text = response10.content[0].text
+    }
+        request = json.dumps(message10)
         try:
+            messages = bedrock_client.invoke_model(modelId=model_id, body=request)
+            response10_text = messages.content[0].text
             response = json.loads(response10_text).get("question")
-            # print("Response:", response)
+            print("Response:", messages)
 
-        except json.JSONDecodeError as e:
-            print("JSONDecodeError:", e)
-            response = None
+        except (ClientError, Exception) as e:
+            print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
+        
         await store_history_redis(itv_no,f"question-{question_number}",response)
         print("Complete history from Redis:")
         print(response)
 
         if response:
             # tts, question = self.extract_question(response)
-            logger.info(f'질문: {response}')
             return {'response': response}
         else:
-            logger.error('질문 생성 실패')
-            return {'response': response10_text}
+            return {'response': 'No messages'}
         
 @app.post("/question/report", status_code=200)
 async def report(item: reportItem):
+
     itv_no = item.itv_no
     question_number = int(item.question_number)
-    
-    logger.info( f'Report API 호출 itv_no: {itv_no}')
     # combined_history =  await getall_history_redis(itv_no)
     print(itv_no)
     print(question_number)
@@ -1641,7 +1487,6 @@ async def report(item: reportItem):
 
     # report 부분에 coverletter 사용 여부 확인
     cover_letter = await get_history_redis(itv_no, "coverletter")
-    logger.info('Redis에서 History GET 완료')
     
     for i in range(1, question_number + 1):
         question = await get_history_redis(itv_no, f"question-{i}")
@@ -1649,69 +1494,54 @@ async def report(item: reportItem):
         questions.append(question)
         answers.append(answer)
         question_answer_pairs.append((question, answer))
-    # print("question_answer_pairs : ", question_answer_pairs)
+    print("question_answer_pairs : ", question_answer_pairs)
 
     message_text = ""
     for question, answer in question_answer_pairs:
         message_text += f"Question: {question}, Answer: {answer}\n"
-    # print("message_text : ",message_text)
+    print("message_text : ",message_text)
 
     ## 꼬리 질문 생성
-    start_time = datetime.now()
-    message = bedrock_client.messages.create(
-        model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-        max_tokens=10000,
-        temperature=1,
-        system= SYSTEM_REPORT,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": message_text,
-                    }
-                ]
-            }
-        ]
-    )
-    print(message)
-    message_content = message.content[0].text
-    start_index = message_content.find('{')
-    end_index = message_content.rfind('}') + 1
-    response_text = message_content[start_index:end_index]
-    
-    end_time = datetime.now()
-    elapsed_time = end_time - start_time
-    logger.info(f'Bedrock Report 생성 SEC:{elapsed_time.total_seconds()}')
-    input_tokens = message.usage.input_tokens
-    output_tokens = message.usage.output_tokens
-    cost = round((input_tokens * 0.000003 + output_tokens * 0.000015) * 1381, 3)
-    logger.info(f'Bedrock cost:{cost}')
-    response_text = message.content[0].text
+    message = {
+    "anthropic_version":"bedrock-2023-05-31",
+    "max_tokens":4096,
+    "temperature":1,
+    "system": SYSTEM_CHAT,
+    "messages":[
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": message_text,
+                }
+            ]
+        }
+    ]
+    }
+    request = json.dumps(message)
 
     try:
+        messages = bedrock_client.invoke_model(modelId=model_id, body=request)
+        response_text = messages.content[0].text
         relevant_experience = json.loads(response_text).get("relevant_experience")
         problem_solving = json.loads(response_text).get("problem_solving")
         communication_skills = json.loads(response_text).get("communication_skills")
         initiative = json.loads(response_text).get("initiative")
         situation = json.loads(response_text).get("situation")
-        task = json.loads(response_text).get("task")
+        task = json.loads(response_text).get("relevant_experience")
         action = json.loads(response_text).get("action")
         result = json.loads(response_text).get("result")
         overall_score = json.loads(response_text).get("overall_score")
         encouragement = json.loads(response_text).get("encouragement")
-        # print(relevant_experience)
+        print(relevant_experience)
         
         # print("Response:", response)
 
-    except json.JSONDecodeError as e:
-        logger.error('JSONDecodeError')
-        print("JSONDecodeError:", e)
-        response = None
-        # noanswer = str(json.loads(response_text))
+    except (ClientError, Exception) as e:
+        print(f"ERROR: Can't invoke '{model_id}'. Reason: {e}")
 
-    if response_text:
+    if relevant_experience and problem_solving and communication_skills and initiative and situation and task and action and result and overall_score and encouragement:
         # tts, question = self.extract_question(response)
         return {
                 'relevant_experience': relevant_experience,
