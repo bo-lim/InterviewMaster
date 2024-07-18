@@ -46,8 +46,8 @@ app.add_middleware(
 # DynamoDB 연결 설정
 dynamodb = boto3.resource(
     "dynamodb",
-    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    # aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    # aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
     region_name=os.getenv("AWS_REGION")
 )
 tb_itm=dynamodb.Table("ITM-PRD-DYN-TBL")
@@ -55,8 +55,8 @@ tb_itm=dynamodb.Table("ITM-PRD-DYN-TBL")
 # KMS 연결 설정
 kms = boto3.client(
     'kms',
-    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    # aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    # aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
     region_name=os.getenv("AWS_REGION")
 )
 kms_id=os.getenv("AWS_KMS_ID")
@@ -460,7 +460,7 @@ async def get_itv(user_id: str):
             "itv_cate": itv_item.get('itv_cate', ''),
             "itv_job": itv_item.get('itv_job', ''),
             "itv_text_url": itv_item.get('itv_text_url', ''),
-            "itv_fb_url": qs_item.get('itv_fb_url', ''),
+            "itv_fb_url": itv_item.get('itv_fb_url', ''),
             "itv_qs_cnt": itv_item.get('itv_qs_cnt', ''),
             "qs_info": itm_qs_info_list
         }
@@ -526,7 +526,7 @@ async def get_itv_detail(user_id: str, itv_no: str):
         "itv_cate": itv_item.get('itv_cate', ''),
         "itv_job": itv_item.get('itv_job', ''),
         "itv_text_url": itv_item.get('itv_text_url', ''),
-        "itv_fb_url": itv_item.get('itv_db_url', ''),
+        "itv_fb_url": itv_item.get('itv_fb_url', ''),
         "itv_qs_cnt": itv_item.get('itv_qs_cnt', ''),
         "qs_info": itm_qs_info_list
     }
