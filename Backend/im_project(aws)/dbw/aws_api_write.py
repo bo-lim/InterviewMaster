@@ -46,8 +46,8 @@ app.add_middleware(
 # DynamoDB 연결 설정
 dynamodb = boto3.resource(
     "dynamodb",
-    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    # aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    # aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
     region_name=os.getenv("AWS_REGION")
 )
 tb_itm=dynamodb.Table("ITM-PRD-DYN-TBL")
@@ -55,8 +55,8 @@ tb_itm=dynamodb.Table("ITM-PRD-DYN-TBL")
 # KMS 연결 설정
 kms = boto3.client(
     'kms',
-    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+    # aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+    # aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
     region_name=os.getenv("AWS_REGION")
 )
 kms_id=os.getenv("AWS_KMS_ID")
@@ -132,7 +132,7 @@ async def create_user(item: ItemUser):
         
         # 전화번호 암호화
         encrypted_user_tel = base64.b64encode(
-            kms.encrypt(KeyId=key_id, Plaintext=user_tel.encode('utf-8'))['CiphertextBlob']
+            kms.encrypt(KeyId=kms_id, Plaintext=user_tel.encode('utf-8'))['CiphertextBlob']
         ).decode('utf-8')
         
         new_user_info = {
@@ -249,7 +249,7 @@ async def mod_user(item: ItemUser):
         
         if user_tel is not None and user_tel != data["user_info"].get("user_tel"):
             encrypted_user_tel = base64.b64encode(
-                kms.encrypt(KeyId=key_id, Plaintext=user_tel.encode('utf-8'))['CiphertextBlob']
+                kms.encrypt(KeyId=kms_id, Plaintext=user_tel.encode('utf-8'))['CiphertextBlob']
             ).decode('utf-8')
             update_expression += "#user_tel = :user_tel, "
             expression_attribute_values[":user_tel"] = user_tel
@@ -480,6 +480,7 @@ async def update_fb(item: ItemFb):
             },
             ReturnValues="UPDATED_NEW"
         )
+        print("Update user_id :", user_id, "\nUpdate data :", result)
         
         if result['ResponseMetadata']['HTTPStatusCode'] != 200:
             raise HTTPException(status_code=400, detail="Update failed")
