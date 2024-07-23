@@ -118,7 +118,6 @@ bedrock_client = AnthropicBedrock(
 )
 
 # redis_client = redis.Redis(host='192.168.56.200', port=6379, decode_responses=True)
-# redis_client = redis.Redis(host='192.168.0.22', port=30637, password='k8spass#')
 redis_client = redis.Redis(host=AWS_ELASTICACHE_REDIS_ENDPOINT, port=6379, ssl=True, decode_responses=True, username=AWS_ELASTICACHE_REDIS_USER, password=AWS_ELASTICACHE_REDIS_PASSWORD)
 
 class coverletterItem(BaseModel):
