@@ -177,20 +177,20 @@ async def create_user(item: ItemUser):
 # 010-9999-9999
 class ItemUser(BaseModel):
     user_id: str
-    user_nm: Optional[str] = None
-    user_nicknm: Optional[str] = None
-    user_gender: Optional[str] = None
-    user_birthday: Optional[str] = None
-    user_tel: Optional[str] = None
+    name: Optional[str] = None
+    nickname: Optional[str] = None
+    gender: Optional[str] = None
+    birthday: Optional[str] = None
+    tel: Optional[str] = None
 
 @app.patch("/dbw/mod_user")
 async def mod_user(item: ItemUser):
     user_id = item.user_id
-    user_nm = item.user_nm
-    user_nicknm = item.user_nicknm
-    user_gender = item.user_gender
-    user_birthday = item.user_birthday
-    user_tel = item.user_tel
+    user_nm = item.name
+    user_nicknm = item.nickname
+    user_gender = item.gender
+    user_birthday = item.birthday
+    user_tel = item.tel
     
     try:
         # info 조회
