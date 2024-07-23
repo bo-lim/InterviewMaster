@@ -39,9 +39,9 @@ load_dotenv()
 # COSRS옵션 부여
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"], # 어느곳에서 접근을 허용할 것이냐
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["*"], # 어떤 메서드에 대해서 허용할 것이냐("GET", "POST")
     allow_headers=["*"], 
 )
 
@@ -159,7 +159,7 @@ async def kakaoAuth(response: Response, code: Optional[str]="NONE"):
     kakao_secret_key = os.getenv("KAKAO_SECRET_KEY")
     if os.getenv("env") == "k8s":
         kakao_url = os.getenv("KAKAO_REDIRECT_K8S_URI")
-        db_check_url = os.getenv("DB_CHECK_K8S_URI")
+        db_check_url = os.getenv("DB_CHECK_LOC_URI")
     else:
         kakao_url = os.getenv("KAKAO_REDIRECT_LOC_URI")
         db_check_url = os.getenv("DB_CHECK_LOC_URI")
@@ -254,7 +254,7 @@ def kakaokill(token: str, response: Response):
         
         response.delete_cookie(key="kakao")
         return {"logout": "success"}
-    
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
