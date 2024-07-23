@@ -5,7 +5,7 @@ from typing import Optional
 from pymongo import MongoClient
 from pydantic import BaseModel
 from datetime import datetime
-import os, uuid, re, logging
+import os, uuid, re, logging, json
 from opentelemetry import trace
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.sdk.trace import TracerProvider
@@ -127,13 +127,13 @@ async def create_user(item: ItemUser):
         new_user = {
             "_id": user_id,
             "user_info": {
-                # 유저의 고유한 값을 생성하기 위해서 uuid4사용(그 중 16진수 hex값 사용)
-                "user_uuid": uuid.uuid4().hex,
                 "user_nm": user_nm,
                 "user_nicknm": user_nicknm,
                 "user_gender": user_gender,
                 "user_birthday": user_birthday,
-                "user_tel": user_tel
+                "user_tel": user_tel,
+                # 유저의 고유한 값을 생성하기 위해서 uuid4사용(그 중 16진수 hex값 사용)
+                "user_uuid": uuid.uuid4().hex
             },
             "user_history": {
                 "user_itv_cnt": 0
@@ -170,20 +170,20 @@ async def create_user(item: ItemUser):
 # 010-9999-9999
 class ItemUser(BaseModel):
     user_id: str
-    user_nm: Optional[str] = None
-    user_nicknm: Optional[str] = None
-    user_gender: Optional[str] = None
-    user_birthday: Optional[str] = None
-    user_tel: Optional[str] = None
+    name: Optional[str] = None
+    nickname: Optional[str] = None
+    gender: Optional[str] = None
+    birthday: Optional[str] = None
+    tel: Optional[str] = None
 
 @app.patch("/dbw/mod_user")
 async def mod_user(item: ItemUser):
     user_id = item.user_id
-    user_nm = item.user_nm
-    user_nicknm = item.user_nicknm
-    user_gender = item.user_gender
-    user_birthday = item.user_birthday
-    user_tel = item.user_tel
+    user_nm = item.name
+    user_nicknm = item.nickname
+    user_gender = item.gender
+    user_birthday = item.birthday
+    user_tel = item.tel
 
     try:
         # user_id에 해당하는 값 가져오기
@@ -286,6 +286,7 @@ async def new_itv(item: ItemItv):
             new_itv_no: {
                 "itv_sub": new_itv_sub,
                 "itv_text_url": itv_text_url,
+                "itv_fb_url": "",
                 "itv_cate": itv_cate,
                 "itv_job": itv_job,
                 "itv_qs_cnt": "0",
@@ -364,8 +365,7 @@ async def new_qs(item: ItemQs):
             "qs_content": qs_content,
             "qs_video_url": qs_video_url,
             "qs_audio_url": qs_audio_url,
-            "qs_text_url": qs_text_url,
-            "qs_fb_url": ""
+            "qs_text_url": qs_text_url
         }
 
         # update문 생성
@@ -390,77 +390,43 @@ async def new_qs(item: ItemQs):
 
 
 
-# 총 질문 개수 반영
+# 면접종료시 결과 반영
 # patch
-# 필수 입력값 : user_id, 면접번호, 질문개수
+# 필수 입력값 : user_id, 면접번호, 질문개수, 피드백 url정보
 
 # T1@T1.com
 # T1@T1_240614_001
 # n개
-class ItemQsCnt(BaseModel):
-    user_id: str
-    itv_no: str
-    itv_qs_cnt: int
-
-@app.patch("/dbw/update_itv_qs_cnt")
-async def update_itv_qs_cnt(item: ItemQsCnt):
-    user_id = item.user_id
-    itv_no = item.itv_no
-    itv_qs_cnt = item.itv_qs_cnt
-
-    try:
-        # user_id에 해당하는 값 가져오기
-        user = collection.find_one({"_id": user_id})
-        if not user:
-            raise HTTPException(status_code=400, detail="User not found")
-
-        # update문 생성
-        update_query = {"$set": {f"itv_info.{itv_no}.itv_qs_cnt": itv_qs_cnt}}
-        print("Update query:", update_query)
-        
-        # update실행!
-        result = collection.update_one({"_id": user_id}, update_query)
-        
-        if result.modified_count == 0:
-            raise HTTPException(status_code=400, detail="Update failed")
-
-        return {"status": "success", "updated_fields": update_query}
-
-    except Exception as e:
-        print("Exception occurred:", str(e))
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-
-# 면접 종료시 결과url 반영(n번 수행)
-# patch
-# 입력값 user_id, 면접번호, 질문번호, 피드백 url정보
-
-# T1@T1.com
-# T1@T1_240614_001
-# 01 ~ n번
 # http://url...
 class ItemFb(BaseModel):
     user_id: str
     itv_no: str
-    qs_no: str
-    qs_fb_url: str
+    itv_qs_cnt: int
+    itv_fb_url: str
 
 @app.patch("/dbw/update_fb")
 async def update_fb(item: ItemFb):
     user_id = item.user_id
     itv_no = item.itv_no
-    qs_no = item.qs_no
-    qs_fb_url = item.qs_fb_url
+    itv_qs_cnt = item.itv_qs_cnt
+    itv_fb_url = item.itv_fb_url
 
     try:
+        # itv_fb_url을 JSON 형식으로 파싱
+        itv_fb_url = json.loads(item.itv_fb_url)
+
         # user_id에 해당하는 값 가져오기
         user = collection.find_one({"_id": user_id})
         if not user:
             raise HTTPException(status_code=400, detail="User not found")
 
         # update문 생성
-        update_query = {"$set": {f"itv_info.{itv_no}.qs_info.{qs_no}.qs_fb_url": qs_fb_url}}
+        update_query = {
+            "$set": {
+                f"itv_info.{itv_no}.itv_qs_cnt": itv_qs_cnt,
+                f"itv_info.{itv_no}.itv_fb_url": itv_fb_url
+            }
+        }
         print("Update query:", update_query)
         
         # update실행!
