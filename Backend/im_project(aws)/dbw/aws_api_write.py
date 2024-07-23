@@ -252,9 +252,9 @@ async def mod_user(item: ItemUser):
                 kms.encrypt(KeyId=kms_id, Plaintext=user_tel.encode('utf-8'))['CiphertextBlob']
             ).decode('utf-8')
             update_expression += "#user_tel = :user_tel, "
-            expression_attribute_values[":user_tel"] = user_tel
+            expression_attribute_values[":user_tel"] = encrypted_user_tel
             expression_attribute_names["#user_tel"] = "user_tel"
-            update_fields["user_tel"] = user_tel
+            update_fields["user_tel"] = encrypted_user_tel
         
         # 업데이트할 필드가 있는 경우에만 업데이트 수행
         if update_fields:
